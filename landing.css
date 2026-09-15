@@ -243,6 +243,7 @@ footer{padding:24px 0 12px;border-top:3px solid var(--gold);background:linear-gr
   .footer-grid{grid-template-columns:1fr 1fr;gap:28px}.footer-grid>div:first-child{grid-column:1/-1}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+.payment-badge.card { background: #2157ac; font-size: 18px; }
 .payment-methods label.unavailable { opacity: .52; cursor: not-allowed; }
 .payment-methods label.unavailable input { cursor: not-allowed; }
 .payment-methods label small { display: block; font-size: .72rem; line-height: 1.25; color: #526b5a; }

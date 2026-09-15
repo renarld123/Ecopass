@@ -118,7 +118,7 @@ module.exports = Object.freeze({
     successDescription: 'Your verified EcoPass is ready. Keep it handy for a smooth arrival and complete payment through your selected method.',
     downloadButton: 'Download Pass',
     saveButton: 'Save Pass',
-    paymentMethods: ['GCash', 'Maya', 'Bank Transfer', 'Pay at Tourism Office (Cash)', 'Physical Payment']
+    paymentMethods: ['GCash', 'Maya', 'Credit/Debit Card', 'Pay at Tourism Office (Cash)', 'Physical Payment']
   },
   cta: {
     title: 'Ready for your next meaningful journey?',

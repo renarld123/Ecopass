@@ -7,7 +7,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const QRCode = require('qrcode');
-const { put: putBlob, get: getBlob, del: delBlob } = require('@vercel/blob');
+const { put: putBlob, get: getBlob, del: delBlob, BlobPreconditionFailedError } = require('@vercel/blob');
 const defaults = require('./site-defaults');
 
 const ROOT = __dirname;
@@ -62,6 +62,7 @@ function merge(base, input) {
 function cleanText(value, max = 500) { return String(value ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, max); }
 function sanitizeContent(input) {
   const result = merge(clone(defaults), input || {});
+  if (result.registration.paymentMethods[2] === 'Bank Transfer') result.registration.paymentMethods[2] = 'Credit/Debit Card';
   const walk = value => {
     if (Array.isArray(value)) return value.map(walk);
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, walk(child)]));
@@ -71,8 +72,16 @@ function sanitizeContent(input) {
 }
 async function ensureStorage() {
   if (USE_BLOB) {
-    if (!(await readBlobJson('data/site-content.json'))) await writeBlobJson('data/site-content.json', { ...clone(defaults), updatedAt: new Date().toISOString() });
-    if (!(await readBlobJson('data/registrations.json'))) await writeBlobJson('data/registrations.json', []);
+    for (const [pathname, initial] of [['data/site-content.json', { ...clone(defaults), updatedAt: new Date().toISOString() }], ['data/registrations.json', []]]) {
+      if ((await readBlobJson(pathname)) === null) {
+        try {
+          await putBlob(pathname, JSON.stringify(initial), { access: 'private', addRandomSuffix: false, allowOverwrite: false, contentType: 'application/json' });
+        } catch (error) {
+          // A concurrent cold start may have created the file. Never overwrite existing data.
+          if ((await readBlobJson(pathname)) === null) throw error;
+        }
+      }
+    }
     return;
   }
   await fsp.mkdir(DATA_DIR, { recursive: true });
@@ -82,15 +91,18 @@ async function ensureStorage() {
   try { await fsp.access(REGISTRATION_FILE); } catch { await fsp.writeFile(REGISTRATION_FILE, '[]\n', { flag: 'wx' }).catch(() => {}); }
 }
 async function readBlob(pathname) {
-  const result = await getBlob(pathname, { access: 'private' });
+  // Registrations are mutable records: CDN-cached content can carry an obsolete ETag.
+  // Compression can change a strong ETag into W/"...", which If-Match rejects.
+  // Request the original representation so data and its strong version tag stay paired.
+  const result = await getBlob(pathname, { access: 'private', useCache: false, headers: { 'Accept-Encoding': 'identity' } });
   if (!result || result.statusCode !== 200) return null;
   const chunks = [];
   for await (const chunk of result.stream) chunks.push(Buffer.from(chunk));
   return { buffer: Buffer.concat(chunks), contentType: result.blob.contentType, etag: result.blob.etag };
 }
 async function readBlobJson(pathname) {
-  try { const value = await readBlob(pathname); return value ? JSON.parse(value.buffer.toString('utf8')) : null; }
-  catch { return null; }
+  const value = await readBlob(pathname);
+  return value ? JSON.parse(value.buffer.toString('utf8')) : null;
 }
 async function writeBlobJson(pathname, value) {
   await putBlob(pathname, JSON.stringify(value, null, 2), { access: 'private', allowOverwrite: true, contentType: 'application/json' });
@@ -186,10 +198,9 @@ function verifyIdUpload(token) {
   try { const value = JSON.parse(Buffer.from(payload, 'base64url').toString()); return value.exp > Date.now() && /^[a-f0-9-]+\.(?:jpg|png|webp|gif|pdf)$/.test(value.file) ? value : null; } catch { return null; }
 }
 async function readRegistrations() {
-  try {
-    const value = USE_BLOB ? await readBlobJson('data/registrations.json') : JSON.parse(await fsp.readFile(REGISTRATION_FILE, 'utf8'));
-    return Array.isArray(value) ? value : [];
-  } catch { return []; }
+  const value = USE_BLOB ? await readBlobJson('data/registrations.json') : JSON.parse(await fsp.readFile(REGISTRATION_FILE, 'utf8'));
+  if (!Array.isArray(value)) throw new Error('Registration storage is missing or invalid');
+  return value;
 }
 async function mutateRegistrations(mutate) {
   if (USE_BLOB) {
@@ -197,12 +208,14 @@ async function mutateRegistrations(mutate) {
       const stored = await readBlob('data/registrations.json');
       if (!stored?.etag) throw new Error('Registration storage ETag is unavailable');
       const records = JSON.parse(stored.buffer.toString('utf8'));
+      if (!Array.isArray(records)) throw new Error('Registration storage is invalid');
       const result = mutate(records);
       try {
         await putBlob('data/registrations.json', JSON.stringify(records, null, 2), { access: 'private', allowOverwrite: true, ifMatch: stored.etag, contentType: 'application/json' });
         return result;
       } catch (error) {
-        if (error.name !== 'BlobPreconditionFailedError' || attempt === 7) throw error;
+        if (!(error instanceof BlobPreconditionFailedError) || attempt === 7) throw error;
+        await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1) + Math.floor(Math.random() * 25)));
       }
     }
   }
@@ -226,7 +239,7 @@ async function updateRegistration(id, apply) {
   }));
   return registrationWriteQueue;
 }
-function paymentType(method) { return { GCash: 'gcash', Maya: 'paymaya', 'Bank Transfer': 'qrph' }[method] || null; }
+function paymentType(method) { return { GCash: 'gcash', Maya: 'paymaya', 'Credit/Debit Card': 'card' }[method] || null; }
 async function paymongoRequest(route, payload) {
   const response = await fetch(`https://api.paymongo.com${route}`, {
     method: 'POST',
@@ -250,7 +263,7 @@ function verifyPaymongoSignature(raw, header, livemode) {
 function cleanRegistration(input) {
   const counts = Object.fromEntries(['adult', 'foreign', 'senior', 'child'].map(key => [key, Math.max(key === 'adult' ? 1 : 0, Math.min(50, Number.parseInt(input?.groups?.[key], 10) || 0))]));
   const stays = ['1D / 0N','2D / 1N','3D / 2N','4D / 3N','5D / 4N','6D / 5N','7D / 6N'];
-  const methods = ['GCash','Maya','Bank Transfer','Pay at Tourism Office (Cash)','Physical Payment'];
+  const methods = ['GCash','Maya','Credit/Debit Card','Pay at Tourism Office (Cash)','Physical Payment'];
   const date = String(input?.visitDate || ''); const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
   const today = new Date(); today.setUTCHours(0,0,0,0);
   const value = { fullName: cleanText(input?.fullName, 100), address: cleanText(input?.address, 180), contact: cleanText(input?.contact, 30), visitDate: date, stay: stays.includes(input?.stay) ? input.stay : '', groups: counts, paymentMethod: methods.includes(input?.paymentMethod) ? input.paymentMethod : '', idToken: cleanText(input?.idToken, 1000) };
@@ -275,6 +288,7 @@ async function serveFile(res, file, cache = false) {
 }
 async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  let stage = 'request';
   try {
     if (url.pathname === '/api/payment-config' && req.method === 'GET') return json(res, 200, { paymongoAvailable: Boolean(PAYMONGO_SECRET_KEY && PAYMONGO_WEBHOOK_SECRET), mode: PAYMONGO_MODE });
     if (url.pathname === '/api/paymongo/webhook' && req.method === 'POST') {
@@ -313,16 +327,20 @@ async function handler(req, res) {
       return json(res, 201, { token: signIdUpload(payload) });
     }
     if (url.pathname === '/api/registrations' && req.method === 'POST') {
+      stage = 'registration-validation';
       if (!sameOrigin(req)) return json(res, 403, { error: 'Invalid request origin' });
       if (!registrationAllowed(req)) return json(res, 429, { error: 'Too many registration attempts. Please try again later.' });
       const input = cleanRegistration(await jsonBody(req)); recordRegistrationAttempt(req);
       const methodType = paymentType(input.paymentMethod);
       if (methodType && (!PAYMONGO_SECRET_KEY || !PAYMONGO_WEBHOOK_SECRET)) return json(res, 503, { error: 'Online checkout is not available yet. Choose payment at the tourism office or try again later.' });
       const record = { ...input, id: `ECP-${input.visitDate.replaceAll('-', '')}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`, paymentStatus: methodType ? 'PENDING' : 'PAY_AT_OFFICE', status: 'PENDING_PAYMENT', createdAt: new Date().toISOString() };
-      delete record.idToken; await appendRegistration(record);
+      delete record.idToken;
+      stage = 'registration-storage';
+      await appendRegistration(record);
       const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'; const origin = `${protocol}://${req.headers.host}`; const verifyUrl = `${origin}/verify/${encodeURIComponent(record.id)}`;
       if (methodType) {
         try {
+        stage = 'paymongo-checkout';
         const result = await paymongoRequest('/v2/checkout_sessions', { data: { attributes: {
           line_items: [{ name: 'EcoPass Environmental User Fee', amount: record.amount * 100, currency: 'PHP', quantity: 1 }],
           payment_method_types: [methodType],
@@ -333,6 +351,7 @@ async function handler(req, res) {
         } } });
         const session = result.data;
         if (!session?.id || !/^https:\/\/checkout\.paymongo\.com\//.test(session?.attributes?.checkout_url || '')) throw Object.assign(new Error('PayMongo did not provide a valid checkout link.'), { status: 502 });
+        stage = 'checkout-storage';
         await updateRegistration(record.id, current => ({ ...current, checkoutSessionId: session.id, checkoutMode: PAYMONGO_MODE }));
         return json(res, 201, { pass: publicPass(record), checkoutUrl: session.attributes.checkout_url });
         } catch (error) {
@@ -409,7 +428,15 @@ async function handler(req, res) {
     const requested = routes[url.pathname] || url.pathname.slice(1);
     if (!requested || requested.includes('..') || path.isAbsolute(requested)) return json(res, 404, { error: 'Not found' });
     return serveFile(res, path.join(ROOT, requested));
-  } catch (error) { return json(res, error.status || 500, { error: error.status ? error.message : 'Server error' }); }
+  } catch (error) {
+    const errorId = crypto.randomUUID();
+    if (!error.status || error.status >= 500) {
+      // Log the stage and code location, never request bodies, credentials or visitor details.
+      console.error(JSON.stringify({ event: 'ecopass_request_failed', errorId, stage, path: url.pathname,
+        errorType: error.constructor?.name || error.name, stack: String(error.stack || '').split('\n').slice(1, 5).map(line => line.trim()) }));
+    }
+    return json(res, error.status || 500, { error: error.status ? error.message : `We couldn't complete your request. Please try again shortly. Reference: ${errorId}`, errorId });
+  }
 }
 
 async function start(port = PORT) {
@@ -423,7 +450,10 @@ async function start(port = PORT) {
 if (require.main === module) start().then(server => console.log(`EcoPass running at http://localhost:${server.address().port}`));
 let vercelStorageReady;
 async function vercelHandler(req, res) {
-  vercelStorageReady ||= ensureStorage();
+  vercelStorageReady ||= ensureStorage().catch(error => {
+    vercelStorageReady = undefined;
+    throw error;
+  });
   await vercelStorageReady;
   return handler(req, res);
 }

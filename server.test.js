@@ -101,6 +101,7 @@ test('public landing page has no inline editing controls and only the required v
 });
 
 test('content sanitizer keeps the schema and strips control characters', () => {
+  assert.equal(sanitizeContent({ registration: { paymentMethods: ['GCash', 'Maya', 'Bank Transfer'] } }).registration.paymentMethods[2], 'Credit/Debit Card');
   const content = sanitizeContent({ hero: { title: 'Hello\u0000 world', steps: 'ignored' }, unknown: 'discarded' });
   assert.equal(content.hero.title, 'Hello world');
   assert.equal(content.hero.phoneImage, undefined);
