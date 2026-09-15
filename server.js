@@ -63,6 +63,8 @@ function cleanText(value, max = 500) { return String(value ?? '').replace(/[\u00
 function sanitizeContent(input) {
   const result = merge(clone(defaults), input || {});
   if (result.registration.paymentMethods[2] === 'Bank Transfer') result.registration.paymentMethods[2] = 'Credit/Debit Card';
+  if (result.registration.successTitle === 'Registration Successful!') result.registration.successTitle = 'Registration Saved';
+  if (result.registration.successDescription === 'Your verified EcoPass is ready. Keep it handy for a smooth arrival and complete payment through your selected method.') result.registration.successDescription = 'A verified QR pass will be issued after payment is confirmed.';
   const walk = value => {
     if (Array.isArray(value)) return value.map(walk);
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, walk(child)]));
@@ -273,12 +275,21 @@ function cleanRegistration(input) {
   const days = Number.parseInt(value.stay, 10); const validUntil = new Date(parsedDate); validUntil.setUTCDate(validUntil.getUTCDate() + days - 1);
   return { ...value, idFile: idUpload?.file || null, amount, validUntil: validUntil.toISOString().slice(0, 10) };
 }
-function publicPass(record) { return { id: record.id, fullName: record.fullName, visitDate: record.visitDate, stay: record.stay, validUntil: record.validUntil, groups: record.groups, amount: record.amount, paymentMethod: record.paymentMethod, paymentStatus: record.paymentStatus, status: record.status, createdAt: record.createdAt }; }
+function passIssued(record) { return record.paymentStatus === 'PAID' && record.status === 'ACTIVE'; }
+function publicPass(record) { return { id: record.id, fullName: record.fullName, visitDate: record.visitDate, stay: record.stay, validUntil: record.validUntil, groups: record.groups, amount: record.amount, paymentMethod: record.paymentMethod, paymentStatus: record.paymentStatus, paymentSource: record.paymentSource || null, passIssued: passIssued(record), status: record.status, createdAt: record.createdAt }; }
+async function passPayload(record, origin) {
+  const pass = publicPass(record);
+  if (!pass.passIssued) return { ...pass, verifyUrl: null, qrDataUrl: null };
+  const verifyUrl = `${origin}/verify/${encodeURIComponent(record.id)}`;
+  const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2, color: { dark: '#075d34', light: '#ffffff' }, errorCorrectionLevel: 'M' });
+  return { ...pass, verifyUrl, qrDataUrl };
+}
 function html(res, status, markup) { res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(markup), 'Cache-Control': 'no-store' }); res.end(markup); }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[character]); }
 function verificationPage(record) {
   if (!record) return '<!doctype html><meta name="viewport" content="width=device-width"><title>EcoPass not found</title><style>body{font:16px Arial;display:grid;place-items:center;min-height:100vh;margin:0;background:#f5f1e8;color:#173b28}.card{max-width:420px;padding:32px;border-radius:22px;background:#fff;text-align:center;box-shadow:0 20px 50px #0002}a{color:#075d34}</style><main class="card"><h1>Pass not found</h1><p>This EcoPass ID could not be verified.</p><a href="/">Return to EcoPass</a></main>';
-  const pass = publicPass(record); const paid = pass.paymentStatus === 'PAID'; const message = paid ? 'Payment confirmed by PayMongo' : pass.paymentStatus === 'PAY_AT_OFFICE' ? 'Payment due at tourism office' : 'Payment not yet confirmed'; return `<!doctype html><meta name="viewport" content="width=device-width"><title>EcoPass ${escapeHtml(pass.id)}</title><style>body{font:15px Arial;display:grid;place-items:center;min-height:100vh;margin:0;padding:20px;background:#f5f1e8;color:#173b28}.card{width:min(430px,100%);box-sizing:border-box;padding:30px;border-radius:24px;background:#fff;box-shadow:0 20px 55px #0002}.check{display:grid;width:58px;height:58px;margin:auto;border-radius:50%;background:#e5f5e8;color:#075d34;font-size:30px;place-items:center}h1{text-align:center;color:#075d34}.status{text-align:center;color:#4f6659}.row{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid #eee}.row span{color:#77877e}.notice{margin-top:18px;padding:11px;border-radius:10px;background:#fff5d9;color:#745b19;font-size:12px;text-align:center}a{display:block;margin-top:20px;color:#075d34;text-align:center}</style><main class="card"><div class="check">${paid ? '✓' : '₱'}</div><h1>${paid ? 'Verified EcoPass' : 'EcoPass Registration'}</h1><p class="status">${escapeHtml(message)}</p><div class="row"><span>Pass ID</span><b>${escapeHtml(pass.id)}</b></div><div class="row"><span>Visitor</span><b>${escapeHtml(pass.fullName)}</b></div><div class="row"><span>Visit date</span><b>${escapeHtml(pass.visitDate)}</b></div><div class="row"><span>Valid until</span><b>${escapeHtml(pass.validUntil)}</b></div><div class="row"><span>Amount</span><b>₱${pass.amount.toFixed(2)}</b></div><div class="notice">${escapeHtml(message)}. Present the pass and payment confirmation upon arrival.</div><a href="/">Return to EcoPass</a></main>`; }
+  if (!passIssued(record)) return '<!doctype html><meta name="viewport" content="width=device-width"><title>EcoPass payment pending</title><style>body{font:16px Arial;display:grid;place-items:center;min-height:100vh;margin:0;background:#f5f1e8;color:#173b28}.card{max-width:420px;padding:32px;border-radius:22px;background:#fff;text-align:center;box-shadow:0 20px 50px #0002}a{color:#075d34}</style><main class="card"><h1>Payment not confirmed</h1><p>This registration is saved, but it is not a verified EcoPass yet.</p><a href="/">Return to EcoPass</a></main>';
+  const pass = publicPass(record); const message = record.paymentSource === 'tourism-office' ? 'Payment confirmed at the tourism office' : 'Payment confirmed by PayMongo'; return `<!doctype html><meta name="viewport" content="width=device-width"><title>EcoPass ${escapeHtml(pass.id)}</title><style>body{font:15px Arial;display:grid;place-items:center;min-height:100vh;margin:0;padding:20px;background:#f5f1e8;color:#173b28}.card{width:min(430px,100%);box-sizing:border-box;padding:30px;border-radius:24px;background:#fff;box-shadow:0 20px 55px #0002}.check{display:grid;width:58px;height:58px;margin:auto;border-radius:50%;background:#e5f5e8;color:#075d34;font-size:30px;place-items:center}h1{text-align:center;color:#075d34}.status{text-align:center;color:#4f6659}.row{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid #eee}.row span{color:#77877e}.notice{margin-top:18px;padding:11px;border-radius:10px;background:#fff5d9;color:#745b19;font-size:12px;text-align:center}a{display:block;margin-top:20px;color:#075d34;text-align:center}</style><main class="card"><div class="check">✓</div><h1>Verified EcoPass</h1><p class="status">${escapeHtml(message)}</p><div class="row"><span>Pass ID</span><b>${escapeHtml(pass.id)}</b></div><div class="row"><span>Visitor</span><b>${escapeHtml(pass.fullName)}</b></div><div class="row"><span>Visit date</span><b>${escapeHtml(pass.visitDate)}</b></div><div class="row"><span>Valid until</span><b>${escapeHtml(pass.validUntil)}</b></div><div class="row"><span>Amount</span><b>₱${pass.amount.toFixed(2)}</b></div><div class="notice">${escapeHtml(message)}. Present this QR pass upon arrival.</div><a href="/">Return to EcoPass</a></main>`; }
 async function serveFile(res, file, cache = false) {
   try {
     const stat = await fsp.stat(file); if (!stat.isFile()) throw new Error('Not file');
@@ -305,7 +316,7 @@ async function handler(req, res) {
       const record = records.find(item => item.id === reference);
       const paidPayment = session?.attributes?.payments?.find(item => item?.attributes?.status === 'paid' && item?.attributes?.currency === 'PHP' && Number(item?.attributes?.amount) === record?.amount * 100);
       if (!record || record.checkoutSessionId !== session.id || !paidPayment) return json(res, 200, { received: true });
-      await updateRegistration(reference, current => current.paymentStatus === 'PAID' ? current : { ...current, paymentStatus: 'PAID', status: 'ACTIVE', paidAt: new Date().toISOString(), paymongoEventId: event?.data?.id || null });
+      await updateRegistration(reference, current => current.paymentStatus === 'PAID' ? current : { ...current, paymentStatus: 'PAID', paymentSource: 'paymongo', status: 'ACTIVE', paidAt: new Date().toISOString(), paymongoEventId: event?.data?.id || null });
       return json(res, 200, { received: true });
     }
     if (url.pathname === '/api/content' && req.method === 'GET') return json(res, 200, await readContent());
@@ -337,7 +348,7 @@ async function handler(req, res) {
       delete record.idToken;
       stage = 'registration-storage';
       await appendRegistration(record);
-      const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'; const origin = `${protocol}://${req.headers.host}`; const verifyUrl = `${origin}/verify/${encodeURIComponent(record.id)}`;
+      const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'; const origin = `${protocol}://${req.headers.host}`;
       if (methodType) {
         try {
         stage = 'paymongo-checkout';
@@ -359,18 +370,16 @@ async function handler(req, res) {
           throw error;
         }
       }
-      const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2, color: { dark: '#075d34', light: '#ffffff' }, errorCorrectionLevel: 'M' });
-      return json(res, 201, { pass: publicPass(record), verifyUrl, qrDataUrl });
+      return json(res, 201, { pass: publicPass(record), verifyUrl: null, qrDataUrl: null });
     }
     if (url.pathname.startsWith('/api/passes/') && req.method === 'GET') {
       const id = decodeURIComponent(url.pathname.slice('/api/passes/'.length)); const record = (await readRegistrations()).find(item => item.id === id);
       if (!record) return json(res, 404, { error: 'Pass not found' });
-      const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'; const origin = `${protocol}://${req.headers.host}`; const verifyUrl = `${origin}/verify/${encodeURIComponent(record.id)}`;
-      const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2, color: { dark: '#075d34', light: '#ffffff' }, errorCorrectionLevel: 'M' });
-      return json(res, 200, { ...publicPass(record), verifyUrl, qrDataUrl });
+      const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'; const origin = `${protocol}://${req.headers.host}`;
+      return json(res, 200, await passPayload(record, origin));
     }
     if (url.pathname.startsWith('/verify/') && req.method === 'GET') {
-      const id = decodeURIComponent(url.pathname.slice('/verify/'.length)); const record = (await readRegistrations()).find(item => item.id === id); return html(res, record ? 200 : 404, verificationPage(record));
+      const id = decodeURIComponent(url.pathname.slice('/verify/'.length)); const record = (await readRegistrations()).find(item => item.id === id); return html(res, !record ? 404 : passIssued(record) ? 200 : 403, verificationPage(record));
     }
     if (url.pathname === '/api/admin/session' && req.method === 'GET') return json(res, 200, { authenticated: authenticated(req) });
     if (url.pathname === '/api/admin/login' && req.method === 'POST') {
@@ -386,6 +395,14 @@ async function handler(req, res) {
     if (url.pathname === '/api/admin/logout' && req.method === 'POST') return json(res, 200, { ok: true }, { 'Set-Cookie': 'ecopass_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' });
     if (url.pathname.startsWith('/api/admin/') && (!authenticated(req) || !sameOrigin(req))) return json(res, 401, { error: 'Authentication required' });
     if (url.pathname === '/api/admin/registrations' && req.method === 'GET') return json(res, 200, await readRegistrations());
+    if (/^\/api\/admin\/registrations\/[^/]+\/confirm-payment$/.test(url.pathname) && req.method === 'POST') {
+      const id = decodeURIComponent(url.pathname.split('/')[4]);
+      const record = (await readRegistrations()).find(item => item.id === id);
+      if (!record) return json(res, 404, { error: 'Registration not found' });
+      if (!['Pay at Tourism Office (Cash)', 'Physical Payment'].includes(record.paymentMethod) || record.paymentStatus !== 'PAY_AT_OFFICE') return json(res, 409, { error: 'Only an unpaid tourism-office registration can be confirmed here.' });
+      const confirmed = await updateRegistration(id, current => ({ ...current, paymentStatus: 'PAID', paymentSource: 'tourism-office', status: 'ACTIVE', paidAt: new Date().toISOString() }));
+      return json(res, 200, publicPass(confirmed));
+    }
     if (url.pathname === '/api/admin/content' && req.method === 'PUT') return json(res, 200, await writeContent(await jsonBody(req)));
     if (url.pathname === '/api/admin/upload' && req.method === 'POST') {
       const slot = url.searchParams.get('slot');

@@ -114,8 +114,8 @@ module.exports = Object.freeze({
     paymentNotice: 'Your selected payment method will be recorded. No charge is made on this demonstration site.',
     backButton: 'Back',
     completeButton: 'Complete Registration',
-    successTitle: 'Registration Successful!',
-    successDescription: 'Your verified EcoPass is ready. Keep it handy for a smooth arrival and complete payment through your selected method.',
+    successTitle: 'Registration Saved',
+    successDescription: 'A verified QR pass will be issued after payment is confirmed.',
     downloadButton: 'Download Pass',
     saveButton: 'Save Pass',
     paymentMethods: ['GCash', 'Maya', 'Credit/Debit Card', 'Pay at Tourism Office (Cash)', 'Physical Payment']

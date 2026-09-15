@@ -45,6 +45,10 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(landingJs, /window\.matchMedia\('\(max-width: 700px\)'\)/);
   assert.doesNotMatch(html, /iframe[^>]+checkout\.paymongo\.com/i);
   assert.match(html, /data-download-pass/);
+  assert.match(html, /class="digital-pass" hidden/);
+  assert.match(html, /data-download-pass[^>]+disabled/);
+  assert.match(landingJs, /pass\.passIssued===true&&pass\.paymentStatus==='PAID'&&Boolean\(pass\.qrDataUrl\)/);
+  assert.match(landingJs, /restorePendingCheckout\(\)/);
   assert.match(html, /property="og:image" content="https:\/\/ecopass-production\.up\.railway\.app\/ecopass-social-card\.png"/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
   assert.match(landingJs, /link\.download=`EcoPass-\$\{currentPass\.id\}\.png`/);
@@ -112,6 +116,7 @@ test('public landing page has no inline editing controls and only the required v
 
 test('content sanitizer keeps the schema and strips control characters', () => {
   assert.equal(sanitizeContent({ registration: { paymentMethods: ['GCash', 'Maya', 'Bank Transfer'] } }).registration.paymentMethods[2], 'Credit/Debit Card');
+  assert.equal(sanitizeContent({ registration: { successTitle: 'Registration Successful!' } }).registration.successTitle, 'Registration Saved');
   const content = sanitizeContent({ hero: { title: 'Hello\u0000 world', steps: 'ignored' }, unknown: 'discarded' });
   assert.equal(content.hero.title, 'Hello world');
   assert.equal(content.hero.phoneImage, undefined);
@@ -150,12 +155,18 @@ test('server protects writes and persists authenticated content updates', async 
   assert.match(registrationResult.pass.id, /^ECP-20991010-[A-F0-9]{8}$/);
   assert.equal(registrationResult.pass.amount, 100);
   assert.equal(registrationResult.pass.paymentStatus, 'PAY_AT_OFFICE');
-  assert.match(registrationResult.qrDataUrl, /^data:image\/png;base64,/);
+  assert.equal(registrationResult.pass.passIssued, false);
+  assert.equal(registrationResult.qrDataUrl, null);
   const verifiedPass = await (await fetch(`${base}/api/passes/${registrationResult.pass.id}`)).json();
   assert.equal(verifiedPass.fullName, 'Test Tourist');
+  assert.equal(verifiedPass.qrDataUrl, null);
+  assert.equal(verifiedPass.verifyUrl, null);
   const verificationPage = await fetch(`${base}/verify/${registrationResult.pass.id}`);
-  assert.equal(verificationPage.status, 200);
-  assert.match(await verificationPage.text(), /Payment due at tourism office/);
+  assert.equal(verificationPage.status, 403);
+  assert.match(await verificationPage.text(), /Payment not confirmed/);
+
+  const officeConfirmDenied = await fetch(`${base}/api/admin/registrations/${registrationResult.pass.id}/confirm-payment`, { method: 'POST' });
+  assert.equal(officeConfirmDenied.status, 401);
 
   const denied = await fetch(`${base}/api/admin/content`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current) });
   assert.equal(denied.status, 401);
@@ -166,6 +177,14 @@ test('server protects writes and persists authenticated content updates', async 
   const adminRegistrations = await fetch(`${base}/api/admin/registrations`, { headers: { Cookie: cookie } });
   assert.equal(adminRegistrations.status, 200);
   assert.equal((await adminRegistrations.json())[0].id, registrationResult.pass.id);
+  const officeConfirm = await fetch(`${base}/api/admin/registrations/${registrationResult.pass.id}/confirm-payment`, { method: 'POST', headers: { Cookie: cookie } });
+  assert.equal(officeConfirm.status, 200);
+  assert.equal((await officeConfirm.json()).passIssued, true);
+  const confirmedOfficePass = await (await fetch(`${base}/api/passes/${registrationResult.pass.id}`)).json();
+  assert.match(confirmedOfficePass.qrDataUrl, /^data:image\/png;base64,/);
+  assert.equal(confirmedOfficePass.paymentSource, 'tourism-office');
+  assert.equal((await fetch(`${base}/verify/${registrationResult.pass.id}`)).status, 200);
+  assert.equal((await fetch(`${base}/api/admin/registrations/${registrationResult.pass.id}/confirm-payment`, { method: 'POST', headers: { Cookie: cookie } })).status, 409);
   const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
   const backgroundUpload = await fetch(`${base}/api/admin/upload?slot=how.backgroundImage`, { method: 'POST', headers: { 'Content-Type': 'image/png', Cookie: cookie }, body: tinyPng });
   assert.equal(backgroundUpload.status, 201);

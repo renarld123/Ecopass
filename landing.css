@@ -271,5 +271,7 @@ footer{padding:24px 0 12px;border-top:3px solid var(--gold);background:linear-gr
 .payment-methods label.unavailable { opacity: .52; cursor: not-allowed; }
 .payment-methods label.unavailable input { cursor: not-allowed; }
 .payment-methods label small { display: block; font-size: .72rem; line-height: 1.25; color: #526b5a; }
+.digital-pass[hidden] { display:none; }
+.success-actions button:disabled { opacity:.48; cursor:not-allowed; box-shadow:none; }
 @media(max-width:620px){.checkout-support{flex-wrap:wrap}.checkout-support button{width:100%}.payment-methods label{grid-template-columns:50px minmax(0,1fr) 20px}.payment-badge.brand{width:46px}.payment-methods label.card-choice{grid-template-columns:88px minmax(0,1fr) 20px}.card-networks{gap:4px}.card-networks>span{width:42px;height:32px;padding:4px}.card-networks img{max-height:21px}.card-networks>span:first-child img{max-width:26px}}
 @media(prefers-reduced-motion:reduce){.pass-modal[open] .pass-modal-card,.pass-step:not([hidden]),.pass-progress span.active,.payment-methods label:has(input:checked),.checkout-spinner,.preparing-payment:before{animation:none!important}}
