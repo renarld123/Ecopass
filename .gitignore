@@ -6,3 +6,7 @@ data/site-content.json
 data/registrations.json
 data/registration-ids/
 data/*.tmp
+
+.vercel
+.env
+.env.local
