@@ -36,7 +36,9 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(html, /data-content="registration\.paymentMethods\.4"/);
   assert.match(html, /Special:FilePath\/GCash_logo\.svg/);
   assert.match(html, /Special:FilePath\/Maya_logo\.svg/);
-  assert.match(html, /www\.paymongo\.com\/favicon\.ico/);
+  assert.match(html, /Special:FilePath\/Mastercard_2019_logo\.svg/);
+  assert.match(html, /Special:FilePath\/Visa_2021\.svg/);
+  assert.doesNotMatch(html, /www\.paymongo\.com\/favicon\.ico|payment-logo-credit/);
   assert.match(html, /data-reopen-checkout/);
   assert.match(landingJs, /window\.open\(url\|\|'about:blank'/);
   assert.match(landingJs, /ecopass-checkout-return/);

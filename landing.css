@@ -248,10 +248,12 @@ footer{padding:24px 0 12px;border-top:3px solid var(--gold);background:linear-gr
 .payment-methods label:has(input:checked) { animation: paymentSelect .36s cubic-bezier(.2,.8,.2,1); }
 .payment-badge.brand { display:grid; width:54px; height:36px; overflow:hidden; padding:5px; border:1px solid #e2e9e5; border-radius:9px; background:#fff; box-shadow:0 3px 8px rgba(20,63,40,.07); place-items:center; }
 .payment-badge.brand img { display:block; width:100%; max-height:27px; object-fit:contain; }
-.payment-badge.card img { width:24px; height:24px; }
+.payment-methods label.card-choice { grid-template-columns:116px minmax(0,1fr) 20px; }
+.card-networks { display:flex; align-items:center; gap:6px; }
+.card-networks>span { display:grid; width:54px; height:36px; padding:5px; border:1px solid #e2e9e5; border-radius:9px; background:#fff; box-shadow:0 3px 8px rgba(20,63,40,.07); place-items:center; }
+.card-networks img { display:block; max-width:100%; max-height:24px; object-fit:contain; }
+.card-networks>span:first-child img { max-width:31px; }
 .payment-badge.cash,.payment-badge.physical { width:36px; height:36px; justify-self:center; }
-.payment-logo-credit { margin:6px 2px 0; color:#789084; font-size:9px; }
-.payment-logo-credit a { color:inherit; text-underline-offset:2px; }
 .pass-modal[open] .pass-modal-card { animation: paymentModalEnter .42s cubic-bezier(.2,.75,.25,1) both; }
 .pass-step:not([hidden]) { animation: paymentStepEnter .34s cubic-bezier(.2,.8,.2,1) both; }
 .pass-progress span.active { animation: progressPulse .42s ease-out; }
@@ -269,5 +271,5 @@ footer{padding:24px 0 12px;border-top:3px solid var(--gold);background:linear-gr
 .payment-methods label.unavailable { opacity: .52; cursor: not-allowed; }
 .payment-methods label.unavailable input { cursor: not-allowed; }
 .payment-methods label small { display: block; font-size: .72rem; line-height: 1.25; color: #526b5a; }
-@media(max-width:620px){.checkout-support{flex-wrap:wrap}.checkout-support button{width:100%}.payment-methods label{grid-template-columns:50px minmax(0,1fr) 20px}.payment-badge.brand{width:46px}}
+@media(max-width:620px){.checkout-support{flex-wrap:wrap}.checkout-support button{width:100%}.payment-methods label{grid-template-columns:50px minmax(0,1fr) 20px}.payment-badge.brand{width:46px}.payment-methods label.card-choice{grid-template-columns:88px minmax(0,1fr) 20px}.card-networks{gap:4px}.card-networks>span{width:42px;height:32px;padding:4px}.card-networks img{max-height:21px}.card-networks>span:first-child img{max-width:26px}}
 @media(prefers-reduced-motion:reduce){.pass-modal[open] .pass-modal-card,.pass-step:not([hidden]),.pass-progress span.active,.payment-methods label:has(input:checked),.checkout-spinner,.preparing-payment:before{animation:none!important}}
