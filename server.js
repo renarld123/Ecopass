@@ -5,7 +5,9 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { Readable } = require('node:stream');
 const QRCode = require('qrcode');
+const { put: putBlob, get: getBlob, del: delBlob } = require('@vercel/blob');
 const defaults = require('./site-defaults');
 
 const ROOT = __dirname;
@@ -16,7 +18,11 @@ try {
     if (match && !process.env[match[1]]) process.env[match[1]] = match[2].replace(/^(['"])(.*)\1$/, '$2');
   }
 } catch {}
-const STORAGE_ROOT = process.env.STORAGE_ROOT ? path.resolve(process.env.STORAGE_ROOT) : ROOT;
+const IS_VERCEL = Boolean(process.env.VERCEL);
+const USE_BLOB = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const STORAGE_ROOT = process.env.STORAGE_ROOT
+  ? path.resolve(process.env.STORAGE_ROOT)
+  : (IS_VERCEL ? path.join('/tmp', 'ecopass') : ROOT);
 const DATA_DIR = path.join(STORAGE_ROOT, 'data');
 const CONTENT_FILE = path.join(DATA_DIR, 'site-content.json');
 const UPLOAD_DIR = path.join(STORAGE_ROOT, 'uploads');
@@ -61,19 +67,42 @@ function sanitizeContent(input) {
   return walk(result);
 }
 async function ensureStorage() {
+  if (USE_BLOB) {
+    if (!(await readBlobJson('data/site-content.json'))) await writeBlobJson('data/site-content.json', { ...clone(defaults), updatedAt: new Date().toISOString() });
+    if (!(await readBlobJson('data/registrations.json'))) await writeBlobJson('data/registrations.json', []);
+    return;
+  }
   await fsp.mkdir(DATA_DIR, { recursive: true });
   await fsp.mkdir(UPLOAD_DIR, { recursive: true });
   await fsp.mkdir(PRIVATE_ID_DIR, { recursive: true });
   try { await fsp.access(CONTENT_FILE); } catch { await writeContent({ ...clone(defaults), updatedAt: new Date().toISOString() }); }
   try { await fsp.access(REGISTRATION_FILE); } catch { await fsp.writeFile(REGISTRATION_FILE, '[]\n', { flag: 'wx' }).catch(() => {}); }
 }
+async function readBlob(pathname) {
+  const result = await getBlob(pathname, { access: 'private' });
+  if (!result || result.statusCode !== 200) return null;
+  const chunks = [];
+  for await (const chunk of result.stream) chunks.push(Buffer.from(chunk));
+  return { buffer: Buffer.concat(chunks), contentType: result.blob.contentType, etag: result.blob.etag };
+}
+async function readBlobJson(pathname) {
+  try { const value = await readBlob(pathname); return value ? JSON.parse(value.buffer.toString('utf8')) : null; }
+  catch { return null; }
+}
+async function writeBlobJson(pathname, value) {
+  await putBlob(pathname, JSON.stringify(value, null, 2), { access: 'private', allowOverwrite: true, contentType: 'application/json' });
+}
 async function readContent() {
-  try { return sanitizeContent(JSON.parse(await fsp.readFile(CONTENT_FILE, 'utf8'))); }
+  try {
+    if (USE_BLOB) return sanitizeContent((await readBlobJson('data/site-content.json')) || defaults);
+    return sanitizeContent(JSON.parse(await fsp.readFile(CONTENT_FILE, 'utf8')));
+  }
   catch { return clone(defaults); }
 }
 async function writeContent(content) {
   const next = sanitizeContent(content);
   next.updatedAt = new Date().toISOString();
+  if (USE_BLOB) { await writeBlobJson('data/site-content.json', next); return next; }
   const temp = `${CONTENT_FILE}.${process.pid}.tmp`;
   await fsp.writeFile(temp, JSON.stringify(next, null, 2), 'utf8');
   await fsp.rename(temp, CONTENT_FILE);
@@ -153,9 +182,18 @@ function verifyIdUpload(token) {
   const expected = sign(`registration-id:${payload}`); if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try { const value = JSON.parse(Buffer.from(payload, 'base64url').toString()); return value.exp > Date.now() && /^[a-f0-9-]+\.(?:jpg|png|webp|gif|pdf)$/.test(value.file) ? value : null; } catch { return null; }
 }
-async function readRegistrations() { try { const value = JSON.parse(await fsp.readFile(REGISTRATION_FILE, 'utf8')); return Array.isArray(value) ? value : []; } catch { return []; } }
+async function readRegistrations() {
+  try {
+    const value = USE_BLOB ? await readBlobJson('data/registrations.json') : JSON.parse(await fsp.readFile(REGISTRATION_FILE, 'utf8'));
+    return Array.isArray(value) ? value : [];
+  } catch { return []; }
+}
 async function appendRegistration(record) {
-  registrationWriteQueue = registrationWriteQueue.then(async () => { const records = await readRegistrations(); records.push(record); const temp = `${REGISTRATION_FILE}.${process.pid}.tmp`; await fsp.writeFile(temp, JSON.stringify(records, null, 2)); await fsp.rename(temp, REGISTRATION_FILE); });
+  registrationWriteQueue = registrationWriteQueue.then(async () => {
+    const records = await readRegistrations(); records.push(record);
+    if (USE_BLOB) return writeBlobJson('data/registrations.json', records);
+    const temp = `${REGISTRATION_FILE}.${process.pid}.tmp`; await fsp.writeFile(temp, JSON.stringify(records, null, 2)); await fsp.rename(temp, REGISTRATION_FILE);
+  });
   await registrationWriteQueue;
 }
 function cleanRegistration(input) {
@@ -188,13 +226,20 @@ async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   try {
     if (url.pathname === '/api/content' && req.method === 'GET') return json(res, 200, await readContent());
-    if (url.pathname === '/health' && req.method === 'GET') return json(res, 200, { status: 'ok', adminConfigured: Boolean(ADMIN_PASSWORD) });
+    if (url.pathname === '/health' && req.method === 'GET') return json(res, 200, {
+      status: 'ok',
+      adminConfigured: Boolean(ADMIN_PASSWORD),
+      storage: USE_BLOB ? 'vercel-blob' : 'filesystem',
+      persistentStorage: USE_BLOB || !IS_VERCEL
+    });
     if (url.pathname === '/api/registration-id' && req.method === 'POST') {
       if (!sameOrigin(req)) return json(res, 403, { error: 'Invalid request origin' });
       if (!registrationAllowed(req)) return json(res, 429, { error: 'Too many registration attempts. Please try again later.' });
       const type = String(req.headers['content-type'] || '').split(';')[0]; if (!PRIVATE_ID_TYPES.has(type)) return json(res, 415, { error: 'Use a JPG, PNG, WebP, GIF, or PDF identification file.' });
       const file = await body(req, 5 * 1024 * 1024); if (file.length < 16 || !matchesPrivateIdType(file, type)) return json(res, 415, { error: 'The identification file is empty or invalid.' });
-      const filename = `${crypto.randomUUID()}${PRIVATE_ID_TYPES.get(type)}`; await fsp.writeFile(path.join(PRIVATE_ID_DIR, filename), file, { flag: 'wx' });
+      const filename = `${crypto.randomUUID()}${PRIVATE_ID_TYPES.get(type)}`;
+      if (USE_BLOB) await putBlob(`registration-ids/${filename}`, file, { access: 'private', addRandomSuffix: false, contentType: type });
+      else await fsp.writeFile(path.join(PRIVATE_ID_DIR, filename), file, { flag: 'wx' });
       const payload = Buffer.from(JSON.stringify({ file: filename, exp: Date.now() + 60 * 60 * 1000 })).toString('base64url');
       return json(res, 201, { token: signIdUpload(payload) });
     }
@@ -238,10 +283,14 @@ async function handler(req, res) {
       if (file.length < 16) return json(res, 400, { error: 'Image file is empty' });
       if (!matchesImageType(file, type)) return json(res, 415, { error: 'The file contents do not match the selected image type' });
       const filename = `${slot.replaceAll('.', '-')}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${IMAGE_TYPES.get(type)}`;
-      await fsp.writeFile(path.join(UPLOAD_DIR, filename), file, { flag: 'wx' });
+      if (USE_BLOB) await putBlob(`uploads/${filename}`, file, { access: 'private', addRandomSuffix: false, contentType: type });
+      else await fsp.writeFile(path.join(UPLOAD_DIR, filename), file, { flag: 'wx' });
       const content = await readContent(); const previous = slot.split('.').reduce((v, key) => v?.[Number.isInteger(Number(key)) ? Number(key) : key], content);
       setPath(content, slot, `/uploads/${filename}`); await writeContent(content);
-      if (typeof previous === 'string' && previous.startsWith('/uploads/')) await fsp.unlink(path.join(UPLOAD_DIR, path.basename(previous))).catch(() => {});
+      if (typeof previous === 'string' && previous.startsWith('/uploads/')) {
+        if (USE_BLOB) await delBlob(`uploads/${path.basename(previous)}`).catch(() => {});
+        else await fsp.unlink(path.join(UPLOAD_DIR, path.basename(previous))).catch(() => {});
+      }
       return json(res, 201, { url: `/uploads/${filename}` });
     }
     if (url.pathname === '/api/admin/image' && req.method === 'DELETE') {
@@ -249,10 +298,19 @@ async function handler(req, res) {
       const content = await readContent(); const previous = slot.split('.').reduce((v, key) => v?.[Number.isInteger(Number(key)) ? Number(key) : key], content);
       const fallback = slot.split('.').reduce((v, key) => v?.[Number.isInteger(Number(key)) ? Number(key) : key], defaults);
       setPath(content, slot, fallback); await writeContent(content);
-      if (typeof previous === 'string' && previous.startsWith('/uploads/')) await fsp.unlink(path.join(UPLOAD_DIR, path.basename(previous))).catch(() => {});
+      if (typeof previous === 'string' && previous.startsWith('/uploads/')) {
+        if (USE_BLOB) await delBlob(`uploads/${path.basename(previous)}`).catch(() => {});
+        else await fsp.unlink(path.join(UPLOAD_DIR, path.basename(previous))).catch(() => {});
+      }
       return json(res, 200, { url: fallback });
     }
-    if (url.pathname.startsWith('/uploads/')) return serveFile(res, path.join(UPLOAD_DIR, path.basename(url.pathname)), true);
+    if (url.pathname.startsWith('/uploads/')) {
+      if (!USE_BLOB) return serveFile(res, path.join(UPLOAD_DIR, path.basename(url.pathname)), true);
+      const stored = await getBlob(`uploads/${path.basename(url.pathname)}`, { access: 'private' });
+      if (!stored || stored.statusCode !== 200) return json(res, 404, { error: 'Not found' });
+      res.writeHead(200, { 'Content-Type': stored.blob.contentType || 'application/octet-stream', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' });
+      return Readable.fromWeb(stored.stream).pipe(res);
+    }
     const routes = { '/': 'ecopass.html', '/ecopass.html': 'ecopass.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
     const requested = routes[url.pathname] || url.pathname.slice(1);
     if (!requested || requested.includes('..') || path.isAbsolute(requested)) return json(res, 404, { error: 'Not found' });
@@ -269,4 +327,4 @@ async function start(port = PORT) {
   }));
 }
 if (require.main === module) start().then(server => console.log(`EcoPass running at http://localhost:${server.address().port}`));
-module.exports = { start, sanitizeContent, readContent, writeContent };
+module.exports = { start, handler, ensureStorage, sanitizeContent, readContent, writeContent };
