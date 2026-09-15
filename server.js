@@ -327,5 +327,11 @@ async function start(port = PORT) {
   }));
 }
 if (require.main === module) start().then(server => console.log(`EcoPass running at http://localhost:${server.address().port}`));
-module.exports = handler;
+let vercelStorageReady;
+async function vercelHandler(req, res) {
+  vercelStorageReady ||= ensureStorage();
+  await vercelStorageReady;
+  return handler(req, res);
+}
+module.exports = vercelHandler;
 Object.assign(module.exports, { start, handler, ensureStorage, sanitizeContent, readContent, writeContent });
