@@ -327,4 +327,5 @@ async function start(port = PORT) {
   }));
 }
 if (require.main === module) start().then(server => console.log(`EcoPass running at http://localhost:${server.address().port}`));
-module.exports = { start, handler, ensureStorage, sanitizeContent, readContent, writeContent };
+module.exports = handler;
+Object.assign(module.exports, { start, handler, ensureStorage, sanitizeContent, readContent, writeContent });
