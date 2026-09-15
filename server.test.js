@@ -129,18 +129,22 @@ test('server protects writes and persists authenticated content updates', async 
   const health = await (await fetch(`${base}/health`)).json();
   assert.equal(health.status, 'ok');
   assert.equal(health.adminConfigured, true);
-  const registration = await fetch(`${base}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName: 'Test Tourist', address: 'Sipalay City, Philippines', contact: '0917 000 0000', visitDate: '2099-10-10', stay: '3D / 2N', groups: { adult: 2, foreign: 0, senior: 0, child: 1 }, paymentMethod: 'GCash' }) });
+  const onlineNotReady = await fetch(`${base}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName: 'Test Tourist', address: 'Sipalay City, Philippines', contact: '0917 000 0000', visitDate: '2099-10-10', stay: '3D / 2N', groups: { adult: 2, foreign: 0, senior: 0, child: 1 }, paymentMethod: 'GCash' }) });
+  assert.equal(onlineNotReady.status, 503);
+  const unsignedWebhook = await fetch(`${base}/api/paymongo/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: { type: 'checkout_session.payment.paid', livemode: false } }) });
+  assert.equal(unsignedWebhook.status, 401);
+  const registration = await fetch(`${base}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName: 'Test Tourist', address: 'Sipalay City, Philippines', contact: '0917 000 0000', visitDate: '2099-10-10', stay: '3D / 2N', groups: { adult: 2, foreign: 0, senior: 0, child: 1 }, paymentMethod: 'Pay at Tourism Office (Cash)' }) });
   assert.equal(registration.status, 201);
   const registrationResult = await registration.json();
   assert.match(registrationResult.pass.id, /^ECP-20991010-[A-F0-9]{8}$/);
   assert.equal(registrationResult.pass.amount, 100);
-  assert.equal(registrationResult.pass.paymentStatus, 'DEMO_ONLY');
+  assert.equal(registrationResult.pass.paymentStatus, 'PAY_AT_OFFICE');
   assert.match(registrationResult.qrDataUrl, /^data:image\/png;base64,/);
   const verifiedPass = await (await fetch(`${base}/api/passes/${registrationResult.pass.id}`)).json();
   assert.equal(verifiedPass.fullName, 'Test Tourist');
   const verificationPage = await fetch(`${base}/verify/${registrationResult.pass.id}`);
   assert.equal(verificationPage.status, 200);
-  assert.match(await verificationPage.text(), /Verified EcoPass/);
+  assert.match(await verificationPage.text(), /Payment due at tourism office/);
 
   const denied = await fetch(`${base}/api/admin/content`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current) });
   assert.equal(denied.status, 401);

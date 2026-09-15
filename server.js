@@ -31,6 +31,9 @@ const PRIVATE_ID_DIR = path.join(DATA_DIR, 'registration-ids');
 const PORT = Number(process.env.PORT || 3000);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update(`${ROOT}:ecopass-local`).digest('hex');
+const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY || '';
+const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET || '';
+const PAYMONGO_MODE = PAYMONGO_SECRET_KEY.startsWith('sk_live_') ? 'live' : 'test';
 const MAX_BODY = 6 * 1024 * 1024;
 const SESSION_TTL = 8 * 60 * 60 * 1000;
 const loginAttempts = new Map();
@@ -188,13 +191,61 @@ async function readRegistrations() {
     return Array.isArray(value) ? value : [];
   } catch { return []; }
 }
+async function mutateRegistrations(mutate) {
+  if (USE_BLOB) {
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const stored = await readBlob('data/registrations.json');
+      if (!stored?.etag) throw new Error('Registration storage ETag is unavailable');
+      const records = JSON.parse(stored.buffer.toString('utf8'));
+      const result = mutate(records);
+      try {
+        await putBlob('data/registrations.json', JSON.stringify(records, null, 2), { access: 'private', allowOverwrite: true, ifMatch: stored.etag, contentType: 'application/json' });
+        return result;
+      } catch (error) {
+        if (error.name !== 'BlobPreconditionFailedError' || attempt === 7) throw error;
+      }
+    }
+  }
+  const records = await readRegistrations();
+  const result = mutate(records);
+  const temp = `${REGISTRATION_FILE}.${process.pid}.tmp`;
+  await fsp.writeFile(temp, JSON.stringify(records, null, 2));
+  await fsp.rename(temp, REGISTRATION_FILE);
+  return result;
+}
 async function appendRegistration(record) {
-  registrationWriteQueue = registrationWriteQueue.then(async () => {
-    const records = await readRegistrations(); records.push(record);
-    if (USE_BLOB) return writeBlobJson('data/registrations.json', records);
-    const temp = `${REGISTRATION_FILE}.${process.pid}.tmp`; await fsp.writeFile(temp, JSON.stringify(records, null, 2)); await fsp.rename(temp, REGISTRATION_FILE);
-  });
+  registrationWriteQueue = registrationWriteQueue.then(() => mutateRegistrations(records => records.push(record)));
   await registrationWriteQueue;
+}
+async function updateRegistration(id, apply) {
+  registrationWriteQueue = registrationWriteQueue.then(() => mutateRegistrations(records => {
+    const index = records.findIndex(item => item.id === id);
+    if (index < 0) return null;
+    records[index] = apply(records[index]);
+    return records[index];
+  }));
+  return registrationWriteQueue;
+}
+function paymentType(method) { return { GCash: 'gcash', Maya: 'paymaya', 'Bank Transfer': 'qrph' }[method] || null; }
+async function paymongoRequest(route, payload) {
+  const response = await fetch(`https://api.paymongo.com${route}`, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${Buffer.from(`${PAYMONGO_SECRET_KEY}:`).toString('base64')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(20000)
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(result.errors?.[0]?.detail || 'PayMongo checkout could not be created. Please choose another payment option.'), { status: 502 });
+  return result;
+}
+function verifyPaymongoSignature(raw, header, livemode) {
+  if (!PAYMONGO_WEBHOOK_SECRET || !header) return false;
+  const parts = Object.fromEntries(header.split(',').map(part => part.trim().split('=')).filter(part => part.length === 2));
+  if (!/^\d{10}$/.test(parts.t || '') || Math.abs(Date.now() / 1000 - Number(parts.t)) > 5 * 60) return false;
+  const sent = livemode ? parts.li : parts.te;
+  if (!/^[a-f0-9]{64}$/i.test(sent || '')) return false;
+  const expected = crypto.createHmac('sha256', PAYMONGO_WEBHOOK_SECRET).update(`${parts.t}.${raw.toString('utf8')}`).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(sent, 'hex'), Buffer.from(expected, 'hex'));
 }
 function cleanRegistration(input) {
   const counts = Object.fromEntries(['adult', 'foreign', 'senior', 'child'].map(key => [key, Math.max(key === 'adult' ? 1 : 0, Math.min(50, Number.parseInt(input?.groups?.[key], 10) || 0))]));
@@ -214,7 +265,7 @@ function html(res, status, markup) { res.writeHead(status, { 'Content-Type': 'te
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[character]); }
 function verificationPage(record) {
   if (!record) return '<!doctype html><meta name="viewport" content="width=device-width"><title>EcoPass not found</title><style>body{font:16px Arial;display:grid;place-items:center;min-height:100vh;margin:0;background:#f5f1e8;color:#173b28}.card{max-width:420px;padding:32px;border-radius:22px;background:#fff;text-align:center;box-shadow:0 20px 50px #0002}a{color:#075d34}</style><main class="card"><h1>Pass not found</h1><p>This EcoPass ID could not be verified.</p><a href="/">Return to EcoPass</a></main>';
-  const pass = publicPass(record); return `<!doctype html><meta name="viewport" content="width=device-width"><title>Verified EcoPass ${escapeHtml(pass.id)}</title><style>body{font:15px Arial;display:grid;place-items:center;min-height:100vh;margin:0;padding:20px;background:#f5f1e8;color:#173b28}.card{width:min(430px,100%);box-sizing:border-box;padding:30px;border-radius:24px;background:#fff;box-shadow:0 20px 55px #0002}.check{display:grid;width:58px;height:58px;margin:auto;border-radius:50%;background:#e5f5e8;color:#075d34;font-size:30px;place-items:center}h1{text-align:center;color:#075d34}.status{text-align:center;color:#4f6659}.row{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid #eee}.row span{color:#77877e}.demo{margin-top:18px;padding:11px;border-radius:10px;background:#fff5d9;color:#745b19;font-size:12px;text-align:center}a{display:block;margin-top:20px;color:#075d34;text-align:center}</style><main class="card"><div class="check">✓</div><h1>Verified EcoPass</h1><p class="status">Active registration record</p><div class="row"><span>Pass ID</span><b>${escapeHtml(pass.id)}</b></div><div class="row"><span>Visitor</span><b>${escapeHtml(pass.fullName)}</b></div><div class="row"><span>Visit date</span><b>${escapeHtml(pass.visitDate)}</b></div><div class="row"><span>Valid until</span><b>${escapeHtml(pass.validUntil)}</b></div><div class="row"><span>Amount</span><b>₱${pass.amount.toFixed(2)}</b></div><div class="demo">Payment is in demonstration mode and has not been charged.</div><a href="/">Return to EcoPass</a></main>`; }
+  const pass = publicPass(record); const paid = pass.paymentStatus === 'PAID'; const message = paid ? 'Payment confirmed by PayMongo' : pass.paymentStatus === 'PAY_AT_OFFICE' ? 'Payment due at tourism office' : 'Payment not yet confirmed'; return `<!doctype html><meta name="viewport" content="width=device-width"><title>EcoPass ${escapeHtml(pass.id)}</title><style>body{font:15px Arial;display:grid;place-items:center;min-height:100vh;margin:0;padding:20px;background:#f5f1e8;color:#173b28}.card{width:min(430px,100%);box-sizing:border-box;padding:30px;border-radius:24px;background:#fff;box-shadow:0 20px 55px #0002}.check{display:grid;width:58px;height:58px;margin:auto;border-radius:50%;background:#e5f5e8;color:#075d34;font-size:30px;place-items:center}h1{text-align:center;color:#075d34}.status{text-align:center;color:#4f6659}.row{display:flex;justify-content:space-between;gap:15px;padding:10px 0;border-bottom:1px solid #eee}.row span{color:#77877e}.notice{margin-top:18px;padding:11px;border-radius:10px;background:#fff5d9;color:#745b19;font-size:12px;text-align:center}a{display:block;margin-top:20px;color:#075d34;text-align:center}</style><main class="card"><div class="check">${paid ? '✓' : '₱'}</div><h1>${paid ? 'Verified EcoPass' : 'EcoPass Registration'}</h1><p class="status">${escapeHtml(message)}</p><div class="row"><span>Pass ID</span><b>${escapeHtml(pass.id)}</b></div><div class="row"><span>Visitor</span><b>${escapeHtml(pass.fullName)}</b></div><div class="row"><span>Visit date</span><b>${escapeHtml(pass.visitDate)}</b></div><div class="row"><span>Valid until</span><b>${escapeHtml(pass.validUntil)}</b></div><div class="row"><span>Amount</span><b>₱${pass.amount.toFixed(2)}</b></div><div class="notice">${escapeHtml(message)}. Present the pass and payment confirmation upon arrival.</div><a href="/">Return to EcoPass</a></main>`; }
 async function serveFile(res, file, cache = false) {
   try {
     const stat = await fsp.stat(file); if (!stat.isFile()) throw new Error('Not file');
@@ -225,6 +276,24 @@ async function serveFile(res, file, cache = false) {
 async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   try {
+    if (url.pathname === '/api/payment-config' && req.method === 'GET') return json(res, 200, { paymongoAvailable: Boolean(PAYMONGO_SECRET_KEY && PAYMONGO_WEBHOOK_SECRET), mode: PAYMONGO_MODE });
+    if (url.pathname === '/api/paymongo/webhook' && req.method === 'POST') {
+      const raw = await body(req, 1024 * 1024);
+      let event;
+      try { event = JSON.parse(raw.toString('utf8')); } catch { return json(res, 400, { error: 'Invalid webhook payload' }); }
+      const payload = event?.data?.attributes || event?.data || {};
+      const livemode = Boolean(payload.livemode);
+      if (livemode !== (PAYMONGO_MODE === 'live') || !verifyPaymongoSignature(raw, String(req.headers['paymongo-signature'] || ''), livemode)) return json(res, 401, { error: 'Invalid webhook signature' });
+      if (payload.type !== 'checkout_session.payment.paid') return json(res, 200, { received: true });
+      const session = payload.data;
+      const reference = session?.attributes?.reference_number;
+      const records = await readRegistrations();
+      const record = records.find(item => item.id === reference);
+      const paidPayment = session?.attributes?.payments?.find(item => item?.attributes?.status === 'paid' && item?.attributes?.currency === 'PHP' && Number(item?.attributes?.amount) === record?.amount * 100);
+      if (!record || record.checkoutSessionId !== session.id || !paidPayment) return json(res, 200, { received: true });
+      await updateRegistration(reference, current => current.paymentStatus === 'PAID' ? current : { ...current, paymentStatus: 'PAID', status: 'ACTIVE', paidAt: new Date().toISOString(), paymongoEventId: event?.data?.id || null });
+      return json(res, 200, { received: true });
+    }
     if (url.pathname === '/api/content' && req.method === 'GET') return json(res, 200, await readContent());
     if (url.pathname === '/health' && req.method === 'GET') return json(res, 200, {
       status: 'ok',
@@ -247,14 +316,34 @@ async function handler(req, res) {
       if (!sameOrigin(req)) return json(res, 403, { error: 'Invalid request origin' });
       if (!registrationAllowed(req)) return json(res, 429, { error: 'Too many registration attempts. Please try again later.' });
       const input = cleanRegistration(await jsonBody(req)); recordRegistrationAttempt(req);
-      const record = { ...input, id: `ECP-${input.visitDate.replaceAll('-', '')}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`, paymentStatus: 'DEMO_ONLY', status: 'ACTIVE', createdAt: new Date().toISOString() };
+      const methodType = paymentType(input.paymentMethod);
+      if (methodType && (!PAYMONGO_SECRET_KEY || !PAYMONGO_WEBHOOK_SECRET)) return json(res, 503, { error: 'Online checkout is not available yet. Choose payment at the tourism office or try again later.' });
+      const record = { ...input, id: `ECP-${input.visitDate.replaceAll('-', '')}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`, paymentStatus: methodType ? 'PENDING' : 'PAY_AT_OFFICE', status: 'PENDING_PAYMENT', createdAt: new Date().toISOString() };
       delete record.idToken; await appendRegistration(record);
       const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'; const origin = `${protocol}://${req.headers.host}`; const verifyUrl = `${origin}/verify/${encodeURIComponent(record.id)}`;
+      if (methodType) {
+        const result = await paymongoRequest('/v2/checkout_sessions', { data: { attributes: {
+          line_items: [{ name: 'EcoPass Environmental User Fee', amount: record.amount * 100, currency: 'PHP', quantity: 1 }],
+          payment_method_types: [methodType],
+          success_url: `${origin}/?payment=return&pass=${encodeURIComponent(record.id)}`,
+          cancel_url: `${origin}/?payment=cancel&pass=${encodeURIComponent(record.id)}`,
+          reference_number: record.id,
+          description: `EcoPass visit on ${record.visitDate}`
+        } } });
+        const session = result.data;
+        if (!session?.id || !/^https:\/\/checkout\.paymongo\.com\//.test(session?.attributes?.checkout_url || '')) throw Object.assign(new Error('PayMongo did not provide a valid checkout link.'), { status: 502 });
+        await updateRegistration(record.id, current => ({ ...current, checkoutSessionId: session.id, checkoutMode: PAYMONGO_MODE }));
+        return json(res, 201, { pass: publicPass(record), checkoutUrl: session.attributes.checkout_url });
+      }
       const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2, color: { dark: '#075d34', light: '#ffffff' }, errorCorrectionLevel: 'M' });
       return json(res, 201, { pass: publicPass(record), verifyUrl, qrDataUrl });
     }
     if (url.pathname.startsWith('/api/passes/') && req.method === 'GET') {
-      const id = decodeURIComponent(url.pathname.slice('/api/passes/'.length)); const record = (await readRegistrations()).find(item => item.id === id); return record ? json(res, 200, publicPass(record)) : json(res, 404, { error: 'Pass not found' });
+      const id = decodeURIComponent(url.pathname.slice('/api/passes/'.length)); const record = (await readRegistrations()).find(item => item.id === id);
+      if (!record) return json(res, 404, { error: 'Pass not found' });
+      const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'; const origin = `${protocol}://${req.headers.host}`; const verifyUrl = `${origin}/verify/${encodeURIComponent(record.id)}`;
+      const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2, color: { dark: '#075d34', light: '#ffffff' }, errorCorrectionLevel: 'M' });
+      return json(res, 200, { ...publicPass(record), verifyUrl, qrDataUrl });
     }
     if (url.pathname.startsWith('/verify/') && req.method === 'GET') {
       const id = decodeURIComponent(url.pathname.slice('/verify/'.length)); const record = (await readRegistrations()).find(item => item.id === id); return html(res, record ? 200 : 404, verificationPage(record));
