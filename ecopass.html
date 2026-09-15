@@ -151,12 +151,13 @@
           <div class="payment-summary" id="paymentSummary"></div>
           <h3 data-content="registration.paymentMethodTitle">Select Payment Method</h3>
           <div class="payment-methods">
-            <label><span class="payment-badge gcash">G</span><span data-content="registration.paymentMethods.0">GCash</span><input type="radio" name="paymentMethod" value="GCash" checked></label>
-            <label><span class="payment-badge maya">M</span><span data-content="registration.paymentMethods.1">Maya</span><input type="radio" name="paymentMethod" value="Maya"></label>
-            <label><span class="payment-badge card">▭</span><span><span data-content="registration.paymentMethods.2">Credit/Debit Card</span><small>Secure card entry on PayMongo</small></span><input type="radio" name="paymentMethod" value="Credit/Debit Card"></label>
-            <label><span class="payment-badge cash">₱</span><span data-content="registration.paymentMethods.3">Pay at Tourism Office (Cash)</span><input type="radio" name="paymentMethod" value="Pay at Tourism Office (Cash)"></label>
-            <label><span class="payment-badge physical">▣</span><span data-content="registration.paymentMethods.4">Physical Payment</span><input type="radio" name="paymentMethod" value="Physical Payment"></label>
+            <label><span class="payment-badge brand gcash"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/GCash_logo.svg" alt="" loading="lazy"></span><span data-content="registration.paymentMethods.0">GCash</span><input type="radio" name="paymentMethod" value="GCash" checked></label>
+            <label><span class="payment-badge brand maya"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Maya_logo.svg" alt="" loading="lazy"></span><span data-content="registration.paymentMethods.1">Maya</span><input type="radio" name="paymentMethod" value="Maya"></label>
+            <label><span class="payment-badge brand card"><img src="https://www.paymongo.com/favicon.ico" alt="" loading="lazy"></span><span><span data-content="registration.paymentMethods.2">Credit/Debit Card</span><small>Visa or Mastercard · secured by PayMongo</small></span><input type="radio" name="paymentMethod" value="Credit/Debit Card"></label>
+            <label><span class="payment-badge cash" aria-hidden="true">₱</span><span data-content="registration.paymentMethods.3">Pay at Tourism Office (Cash)</span><input type="radio" name="paymentMethod" value="Pay at Tourism Office (Cash)"></label>
+            <label><span class="payment-badge physical" aria-hidden="true">▣</span><span data-content="registration.paymentMethods.4">Physical Payment</span><input type="radio" name="paymentMethod" value="Physical Payment"></label>
           </div>
+          <p class="payment-logo-credit"><a href="https://commons.wikimedia.org/wiki/File:GCash_logo.svg" target="_blank" rel="noopener noreferrer">GCash logo</a> · <a href="https://commons.wikimedia.org/wiki/File:Maya_logo.svg" target="_blank" rel="noopener noreferrer">Maya logo</a> via Wikimedia Commons</p>
           <p class="payment-notice">Online payment opens PayMongo's secure checkout. A payment is marked paid only after confirmation.</p>
           <p class="pass-form-status" data-pass-status="2" role="alert"></p>
           <div class="registration-actions"><button class="button registration-back" type="button" data-registration-back data-content="registration.backButton">Back</button><button class="button button-gold" type="button" data-registration-complete data-content="registration.completeButton">Complete Registration</button></div>
@@ -165,6 +166,7 @@
           <div class="success-heading"><span class="success-check">✓</span><h2 data-content="registration.successTitle">Registration Successful!</h2><p data-content="registration.successDescription">Your verified EcoPass is ready. Keep it handy for a smooth arrival and complete payment through your selected method.</p></div>
           <div class="digital-pass"><span class="pass-status-chip">REGISTERED</span><img id="passQr" alt="QR code for the newly created EcoPass"><strong>EcoPass Visitor Pass</strong></div>
           <dl class="pass-details" id="passDetails"></dl>
+          <div class="checkout-support" hidden aria-live="polite"><span class="checkout-spinner" aria-hidden="true"></span><p>Finish your payment in the secure PayMongo window. Your pass will update here when payment is confirmed.</p><button class="button registration-back" type="button" data-reopen-checkout>Open secure checkout</button></div>
           <p class="pass-form-status success" data-pass-status="3" role="status" aria-live="polite"></p>
           <div class="registration-actions success-actions"><button class="button registration-back" type="button" data-download-pass data-content="registration.downloadButton">Download Pass</button><button class="button button-green" type="button" data-save-pass data-content="registration.saveButton">Save Pass</button></div>
         </section>

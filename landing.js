@@ -39,7 +39,86 @@ function formatPassDate(value){return new Intl.DateTimeFormat('en-PH',{year:'num
 function buildRegistrationPayload(){const values=new FormData(passForm);return{fullName:String(values.get('fullName')),address:String(values.get('address')),contact:String(values.get('contact')),visitDate:String(values.get('visitDate')),stay:String(values.get('stay')),groups:{...registrationCounts},paymentMethod:String(values.get('paymentMethod')),idToken:uploadedIdToken}}
 function paymentLabel(pass){return pass.paymentStatus==='PAID'?'Paid online':pass.paymentStatus==='PAY_AT_OFFICE'?'Pay at tourism office':pass.paymentStatus==='PENDING'?'Awaiting online payment':'Payment status to be confirmed'}
 function renderPass(pass){const group=Object.keys(pass.groups).filter(key=>pass.groups[key]>0).map(key=>`${pass.groups[key]} ${groupLabel(key)}`).join(' · ');passModal.querySelector('#passQr').src=pass.qrDataUrl;passModal.querySelector('.pass-status-chip').textContent=pass.paymentStatus==='PAID'?'PAID':pass.paymentStatus==='PAY_AT_OFFICE'?'PAY AT OFFICE':'PAYMENT PENDING';passModal.querySelector('.success-heading h2').textContent=pass.paymentStatus==='PAID'?'Payment Successful!':'Registration Saved';passModal.querySelector('.success-heading p').textContent=pass.paymentStatus==='PAID'?'Your payment is confirmed and your EcoPass is ready.':'Your QR registration is saved. Present it with payment confirmation or pay at the tourism office.';passModal.querySelector('#passDetails').innerHTML=[['Pass ID',pass.id],['Name',pass.name],['Group',group],['Date of Visit',pass.visitDateLabel],['Length of Stay',pass.stay],['Valid Until',pass.validUntil],['Amount Due',`₱${pass.amount.toFixed(2)}`],['Payment',`${pass.paymentMethod} · ${paymentLabel(pass)}`]].map(([label,value])=>`<div><dt>${escapeDownload(label)}</dt><dd>${escapeDownload(value)}</dd></div>`).join('')}
-passModal?.querySelector('[data-registration-complete]')?.addEventListener('click',async event=>{const button=event.currentTarget;const status=passModal.querySelector('[data-pass-status="2"]');status.textContent='Saving your registration and preparing payment…';button.disabled=true;try{const response=await fetch('/api/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(buildRegistrationPayload())});const result=await response.json();if(!response.ok)throw new Error(result.error||'Registration could not be completed.');if(result.checkoutUrl){localStorage.setItem('ecopassPendingPass',result.pass.id);location.href=result.checkoutUrl;return}currentPass={...result.pass,name:result.pass.fullName,visitDateLabel:formatPassDate(result.pass.visitDate),validUntil:formatPassDate(result.pass.validUntil),qrDataUrl:result.qrDataUrl,verifyUrl:result.verifyUrl};renderPass(currentPass);showRegistrationStep(3)}catch(error){status.textContent=error.message}finally{button.disabled=false}});
+let checkoutPopup=null,checkoutUrl='',checkoutPassId='',checkoutTimer=null;
+const checkoutSupport=passModal?.querySelector('.checkout-support');
+function openSecureCheckout(url){
+  const mobile=window.matchMedia('(max-width: 700px)').matches;
+  if(mobile)return null;
+  const popup=window.open(url||'about:blank','ecopassSecureCheckout','popup=yes,width=640,height=780,scrollbars=yes,resizable=yes');
+  if(popup)popup.focus();
+  return popup;
+}
+async function refreshCheckoutPass(){
+  if(!checkoutPassId)return false;
+  const response=await fetch(`/api/passes/${encodeURIComponent(checkoutPassId)}`,{cache:'no-store'});
+  if(!response.ok)throw new Error('Your saved pass could not be refreshed.');
+  const pass=await response.json();
+  currentPass={...pass,name:pass.fullName,visitDateLabel:formatPassDate(pass.visitDate),validUntil:formatPassDate(pass.validUntil)};
+  renderPass(currentPass);
+  if(pass.paymentStatus==='PAID'){
+    checkoutSupport.hidden=true;
+    const status=passModal.querySelector('[data-pass-status="3"]');
+    status.textContent='PayMongo has confirmed your payment. Your EcoPass is ready.';
+    status.classList.add('success');
+    clearInterval(checkoutTimer);checkoutTimer=null;
+    return true;
+  }
+  return false;
+}
+function watchSecureCheckout(){
+  clearInterval(checkoutTimer);
+  let busy=false;
+  checkoutTimer=setInterval(async()=>{
+    if(busy||!passModal.open)return;
+    busy=true;
+    try{await refreshCheckoutPass()}catch{}finally{busy=false}
+  },3000);
+}
+passModal?.querySelector('[data-reopen-checkout]')?.addEventListener('click',()=>{
+  if(!/^https:\/\/checkout\.paymongo\.com\//.test(checkoutUrl))return;
+  checkoutPopup=openSecureCheckout(checkoutUrl);
+  if(!checkoutPopup)location.href=checkoutUrl;
+});
+window.addEventListener('message',async event=>{
+  if(event.origin!==location.origin||event.data?.type!=='ecopass-checkout-return'||event.data?.passId!==checkoutPassId)return;
+  if(event.data.result==='cancel'){
+    checkoutSupport.hidden=true;
+    passModal.querySelector('[data-pass-status="3"]').textContent='Payment was cancelled. Your registration remains saved; payment is still due.';
+    clearInterval(checkoutTimer);checkoutTimer=null;
+  }else try{await refreshCheckoutPass()}catch{}
+});
+passModal?.querySelector('[data-registration-complete]')?.addEventListener('click',async event=>{
+  const button=event.currentTarget;
+  const status=passModal.querySelector('[data-pass-status="2"]');
+  const online=['GCash','Maya','Credit/Debit Card'].includes(passModal.querySelector('input[name="paymentMethod"]:checked')?.value);
+  // Reserve a top-level window on the user gesture so browsers do not block the later checkout URL.
+  const reservedPopup=online?openSecureCheckout():null;
+  status.textContent='Saving your registration and preparing payment…';
+  status.classList.add('preparing-payment');
+  button.disabled=true;
+  try{
+    const response=await fetch('/api/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(buildRegistrationPayload())});
+    const result=await response.json();
+    if(!response.ok)throw new Error(result.error||'Registration could not be completed.');
+    if(result.checkoutUrl){
+      if(!/^https:\/\/checkout\.paymongo\.com\//.test(result.checkoutUrl))throw new Error('The secure checkout link was invalid.');
+      checkoutPassId=result.pass.id;checkoutUrl=result.checkoutUrl;checkoutPopup=reservedPopup;
+      localStorage.setItem('ecopassPendingPass',checkoutPassId);
+      if(!reservedPopup){location.href=checkoutUrl;return}
+      reservedPopup.location.href=checkoutUrl;
+      checkoutSupport.hidden=false;
+      showRegistrationStep(3);
+      passModal.querySelector('[data-pass-status="3"]').textContent='Registration saved. Complete payment in the PayMongo window.';
+      await refreshCheckoutPass();
+      watchSecureCheckout();
+      return;
+    }
+    if(reservedPopup)reservedPopup.close();
+    currentPass={...result.pass,name:result.pass.fullName,visitDateLabel:formatPassDate(result.pass.visitDate),validUntil:formatPassDate(result.pass.validUntil),qrDataUrl:result.qrDataUrl,verifyUrl:result.verifyUrl};
+    renderPass(currentPass);showRegistrationStep(3);
+  }catch(error){if(reservedPopup)reservedPopup.close();status.textContent=error.message}
+  finally{status.classList.remove('preparing-payment');button.disabled=false}
+});
 function escapeDownload(value){return String(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]))}
 function loadCanvasImage(source){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Pass artwork could not be loaded.'));image.src=source})}
 function roundedPath(context,x,y,width,height,radius){const r=Math.min(radius,width/2,height/2);context.beginPath();context.moveTo(x+r,y);context.arcTo(x+width,y,x+width,y+height,r);context.arcTo(x+width,y+height,x,y+height,r);context.arcTo(x,y+height,x,y,r);context.arcTo(x,y,x+width,y,r);context.closePath()}
@@ -53,7 +132,7 @@ passModal?.addEventListener('click',event=>{if(event.target===passModal)closePas
 passModal?.addEventListener('close',()=>{document.body.classList.remove('modal-open');passModalTrigger?.focus();passModalTrigger=null});
 passModal?.addEventListener('cancel',()=>document.body.classList.remove('modal-open'));
 async function configurePaymentChoices(){try{const response=await fetch('/api/payment-config');const config=await response.json();const online=passModal?.querySelectorAll('input[name="paymentMethod"]');online?.forEach(input=>{if(['GCash','Maya','Credit/Debit Card'].includes(input.value)){input.disabled=!config.paymongoAvailable;input.closest('label').classList.toggle('unavailable',!config.paymongoAvailable)}});if(!config.paymongoAvailable){const cash=passModal?.querySelector('input[value="Pay at Tourism Office (Cash)"]');if(cash)cash.checked=true}const note=passModal?.querySelector('.payment-notice');if(note)note.textContent=config.paymongoAvailable?`Online payment opens PayMongo's secure ${config.mode==='live'?'live':'test'} checkout. Card details are entered on PayMongo. Your pass is marked paid after payment is confirmed.`:'Online checkout is not connected yet. You may register and pay at the tourism office.'}catch{} }
-async function showReturnedPayment(){const params=new URLSearchParams(location.search);const passId=params.get('pass');if(!passId||!['return','cancel'].includes(params.get('payment')))return;openPassModal();showRegistrationStep(3);const status=passModal.querySelector('[data-pass-status="3"]');const refresh=async()=>{const response=await fetch(`/api/passes/${encodeURIComponent(passId)}`);if(!response.ok)throw new Error('Your pass record could not be loaded.');const pass=await response.json();currentPass={...pass,name:pass.fullName,visitDateLabel:formatPassDate(pass.visitDate),validUntil:formatPassDate(pass.validUntil)};renderPass(currentPass);status.textContent=pass.paymentStatus==='PAID'?'PayMongo has confirmed your payment. Your EcoPass is ready.':params.get('payment')==='cancel'?'Payment was cancelled. Your registration remains saved, but payment is due.':'Your registration is saved. Waiting for PayMongo to confirm the payment. Please refresh this page shortly.';return pass.paymentStatus==='PAID'};try{if(!(await refresh())&&params.get('payment')==='return'){let tries=0;const timer=setInterval(async()=>{try{tries++;if(await refresh()||tries>=10)clearInterval(timer)}catch{clearInterval(timer)}},3000)}}catch(error){status.textContent=error.message}history.replaceState({},'',location.pathname)}
+async function showReturnedPayment(){const params=new URLSearchParams(location.search);const passId=params.get('pass');if(!passId||!['return','cancel'].includes(params.get('payment')))return;if(window.opener&&!window.opener.closed){window.opener.postMessage({type:'ecopass-checkout-return',passId,result:params.get('payment')},location.origin);window.close();return}openPassModal();showRegistrationStep(3);const status=passModal.querySelector('[data-pass-status="3"]');const refresh=async()=>{const response=await fetch(`/api/passes/${encodeURIComponent(passId)}`);if(!response.ok)throw new Error('Your pass record could not be loaded.');const pass=await response.json();currentPass={...pass,name:pass.fullName,visitDateLabel:formatPassDate(pass.visitDate),validUntil:formatPassDate(pass.validUntil)};renderPass(currentPass);status.textContent=pass.paymentStatus==='PAID'?'PayMongo has confirmed your payment. Your EcoPass is ready.':params.get('payment')==='cancel'?'Payment was cancelled. Your registration remains saved, but payment is due.':'Your registration is saved. Waiting for PayMongo to confirm the payment. Please refresh this page shortly.';return pass.paymentStatus==='PAID'};try{if(!(await refresh())&&params.get('payment')==='return'){let tries=0;const timer=setInterval(async()=>{try{tries++;if(await refresh()||tries>=10)clearInterval(timer)}catch{clearInterval(timer)}},3000)}}catch(error){status.textContent=error.message}history.replaceState({},'',location.pathname)}
 if(location.hash==='#pass-modal')openPassModal();
 configurePaymentChoices();
 showReturnedPayment();

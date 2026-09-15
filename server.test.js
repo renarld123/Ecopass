@@ -34,6 +34,14 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(html, /data-content="registration\.visitDateLabel"/);
   assert.match(html, /data-content="registration\.groupTitle"/);
   assert.match(html, /data-content="registration\.paymentMethods\.4"/);
+  assert.match(html, /Special:FilePath\/GCash_logo\.svg/);
+  assert.match(html, /Special:FilePath\/Maya_logo\.svg/);
+  assert.match(html, /www\.paymongo\.com\/favicon\.ico/);
+  assert.match(html, /data-reopen-checkout/);
+  assert.match(landingJs, /window\.open\(url\|\|'about:blank'/);
+  assert.match(landingJs, /ecopass-checkout-return/);
+  assert.match(landingJs, /window\.matchMedia\('\(max-width: 700px\)'\)/);
+  assert.doesNotMatch(html, /iframe[^>]+checkout\.paymongo\.com/i);
   assert.match(html, /data-download-pass/);
   assert.match(html, /property="og:image" content="https:\/\/ecopass-production\.up\.railway\.app\/ecopass-social-card\.png"/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
