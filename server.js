@@ -214,11 +214,11 @@ async function mutateRegistrations(mutate) {
   return result;
 }
 async function appendRegistration(record) {
-  registrationWriteQueue = registrationWriteQueue.then(() => mutateRegistrations(records => records.push(record)));
+  registrationWriteQueue = registrationWriteQueue.catch(() => {}).then(() => mutateRegistrations(records => records.push(record)));
   await registrationWriteQueue;
 }
 async function updateRegistration(id, apply) {
-  registrationWriteQueue = registrationWriteQueue.then(() => mutateRegistrations(records => {
+  registrationWriteQueue = registrationWriteQueue.catch(() => {}).then(() => mutateRegistrations(records => {
     const index = records.findIndex(item => item.id === id);
     if (index < 0) return null;
     records[index] = apply(records[index]);
@@ -322,6 +322,7 @@ async function handler(req, res) {
       delete record.idToken; await appendRegistration(record);
       const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'; const origin = `${protocol}://${req.headers.host}`; const verifyUrl = `${origin}/verify/${encodeURIComponent(record.id)}`;
       if (methodType) {
+        try {
         const result = await paymongoRequest('/v2/checkout_sessions', { data: { attributes: {
           line_items: [{ name: 'EcoPass Environmental User Fee', amount: record.amount * 100, currency: 'PHP', quantity: 1 }],
           payment_method_types: [methodType],
@@ -334,6 +335,10 @@ async function handler(req, res) {
         if (!session?.id || !/^https:\/\/checkout\.paymongo\.com\//.test(session?.attributes?.checkout_url || '')) throw Object.assign(new Error('PayMongo did not provide a valid checkout link.'), { status: 502 });
         await updateRegistration(record.id, current => ({ ...current, checkoutSessionId: session.id, checkoutMode: PAYMONGO_MODE }));
         return json(res, 201, { pass: publicPass(record), checkoutUrl: session.attributes.checkout_url });
+        } catch (error) {
+          await updateRegistration(record.id, current => ({ ...current, paymentStatus: 'CHECKOUT_FAILED' })).catch(() => {});
+          throw error;
+        }
       }
       const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2, color: { dark: '#075d34', light: '#ffffff' }, errorCorrectionLevel: 'M' });
       return json(res, 201, { pass: publicPass(record), verifyUrl, qrDataUrl });
