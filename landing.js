@@ -49,6 +49,8 @@ function showRegistrationStep(step){
   });
   passModal.querySelectorAll('.pass-progress i').forEach((line,index)=>line.classList.toggle('complete',index<step-1));
   passModal.querySelector('.pass-modal-card').scrollTop=0;
+  const registrationMain=passModal.querySelector('.registration-main');
+  if(registrationMain)registrationMain.scrollTop=0;
   const heading=passModal.querySelector(`[data-pass-step="${step}"] h2`);
   heading.id=step===1?'pass-modal-title':`pass-step-${step}-title`;
   heading.tabIndex=-1;

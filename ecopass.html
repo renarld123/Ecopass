@@ -28,8 +28,10 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="landing.css">
   <link rel="stylesheet" href="landing-polish.css">
+  <link rel="stylesheet" href="registration-design.css">
   <script src="landing.js" defer></script>
   <script src="landing-motion.js" defer></script>
+  <script src="registration-design.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -125,23 +127,45 @@
   </dialog>
   <dialog class="pass-modal" id="pass-modal" aria-labelledby="pass-modal-title">
     <div class="pass-modal-card">
+      <div class="registration-layout">
+        <aside class="registration-side" aria-label="Your trip summary">
+          <div class="trip-intro">
+            <span class="trip-location"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg> SIPALAY CITY</span>
+            <h2>A little planning.<br>A lot to explore.</h2>
+            <p>Your next adventure starts with one simple pass.</p>
+          </div>
+          <div class="trip-postcard">
+            <img data-image="journey.image" src="ecopass-journey-walkway-v2.png" alt="A scenic escape in Sipalay">
+            <span class="postcard-stamp"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#leaf"></use></svg> Travel with purpose</span>
+          </div>
+          <div class="trip-ticket">
+            <div class="trip-ticket-heading"><span>YOUR VISIT</span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#bookmark"></use></svg></div>
+            <strong class="trip-ticket-place">Hello, Sipalay.</strong>
+            <div class="trip-ticket-date"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#calendar"></use></svg><span data-trip-date>Choose your visit date</span></div>
+            <div class="trip-ticket-facts"><div><small>TRAVELERS</small><strong data-trip-guests>1 guest</strong></div><div><small>YOUR STAY</small><strong data-trip-stay>3D / 2N</strong></div></div>
+            <div class="trip-ticket-total"><span>Environmental fee<small data-trip-fee-note>Estimated total for your group</small></span><strong data-trip-total>₱50.00</strong></div>
+          </div>
+          <p class="trip-reassurance"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#shield"></use></svg><span>Your QR pass is issued after payment is confirmed.</span></p>
+        </aside>
+        <div class="registration-main">
       <button class="pass-modal-close" type="button" aria-label="Close tour details modal"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#close"></use></svg></button>
-      <div class="pass-progress" aria-label="Registration progress"><span class="active" data-pass-progress="1">1</span><i></i><span data-pass-progress="2">2</span><i></i><span data-pass-progress="3">3</span></div>
+      <div class="pass-progress" aria-label="Registration progress"><span class="active" data-pass-progress="1" data-step-label="Your details">1</span><i></i><span data-pass-progress="2" data-step-label="Payment">2</span><i></i><span data-pass-progress="3" data-step-label="Your pass">3</span></div>
       <form class="registration-form" id="passForm">
         <section class="pass-step registration-step" data-pass-step="1">
           <div class="registration-heading"><span class="registration-icon" aria-hidden="true"><img data-image="hero.benefits.2.iconImage" src="ecopass-benefit-tourist.svg" alt=""></span><div><h2 id="pass-modal-title" data-content="registration.title">Tourist Registration</h2><p data-content="registration.description">A quick, secure registration for your Sipalay adventure</p></div></div>
+          <div class="form-section-heading"><span>01</span><div><h3>Let’s get to know you</h3><p>Details for the lead traveler in your group.</p></div></div>
           <div class="registration-grid">
-            <label class="registration-field wide"><span data-content="registration.fullNameLabel">Full Name</span><input name="fullName" autocomplete="name" placeholder="Juan Dela Cruz" required></label>
-            <label class="registration-field wide"><span data-content="registration.addressLabel">Address</span><input name="address" autocomplete="street-address" placeholder="Purok, Barangay, City" required></label>
-            <label class="registration-field"><span data-content="registration.contactLabel">Contact Number</span><input name="contact" type="tel" autocomplete="tel" placeholder="0917 123 4567" required></label>
-            <label class="registration-field"><span data-content="registration.visitDateLabel">Date of Visit</span><input name="visitDate" type="date" required></label>
-            <label class="registration-field wide"><span data-content="registration.stayLabel">Length of Stay</span><select name="stay" required><option value="1D / 0N">1D / 0N</option><option value="2D / 1N">2D / 1N</option><option value="3D / 2N" selected>3D / 2N</option><option value="4D / 3N">4D / 3N</option><option value="5D / 4N">5D / 4N</option><option value="6D / 5N">6D / 5N</option><option value="7D / 6N">7D / 6N</option></select></label>
+            <label class="registration-field"><span data-content="registration.fullNameLabel">Full Name</span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#user"></use></svg><input name="fullName" autocomplete="name" placeholder="Juan Dela Cruz" required></label>
+            <label class="registration-field"><span data-content="registration.contactLabel">Contact Number</span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#phone-call"></use></svg><input name="contact" type="tel" autocomplete="tel" placeholder="0917 123 4567" required></label>
+            <label class="registration-field wide"><span data-content="registration.addressLabel">Address</span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg><input name="address" autocomplete="street-address" placeholder="Purok, Barangay, City" required></label>
+            <label class="registration-field"><span data-content="registration.visitDateLabel">Date of Visit</span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#calendar"></use></svg><input name="visitDate" type="date" required></label>
+            <label class="registration-field"><span data-content="registration.stayLabel">Length of Stay</span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#sun"></use></svg><select name="stay" required><option value="1D / 0N">1D / 0N</option><option value="2D / 1N">2D / 1N</option><option value="3D / 2N" selected>3D / 2N</option><option value="4D / 3N">4D / 3N</option><option value="5D / 4N">5D / 4N</option><option value="6D / 5N">6D / 5N</option><option value="7D / 6N">7D / 6N</option></select></label>
           </div>
-          <fieldset class="group-composition"><legend data-content="registration.groupTitle">Group Composition</legend>
-            <div class="group-row" data-group="adult" data-rate="50"><div><strong data-content="registration.adultLabel">Adult (Local)</strong><small>Local visitor · ₱50 per person</small></div><div class="counter"><button type="button" data-count-action="minus" aria-label="Remove adult"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#minus"></use></svg></button><output aria-live="polite" aria-atomic="true">1</output><button type="button" data-count-action="plus" aria-label="Add adult"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#plus"></use></svg></button></div></div>
-            <div class="group-row" data-group="foreign" data-rate="100"><div><strong data-content="registration.foreignLabel">Foreign Visitor</strong><small>Non-local visitor · ₱100 per person</small></div><div class="counter"><button type="button" data-count-action="minus" aria-label="Remove foreign visitor"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#minus"></use></svg></button><output aria-live="polite" aria-atomic="true">0</output><button type="button" data-count-action="plus" aria-label="Add foreign visitor"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#plus"></use></svg></button></div></div>
-            <div class="group-row" data-group="senior" data-rate="25"><div><strong data-content="registration.seniorLabel">Senior / PWD / Student</strong><small>50% discounted rate · ₱25 per person</small></div><div class="counter"><button type="button" data-count-action="minus" aria-label="Remove discounted visitor"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#minus"></use></svg></button><output aria-live="polite" aria-atomic="true">0</output><button type="button" data-count-action="plus" aria-label="Add discounted visitor"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#plus"></use></svg></button></div></div>
-            <div class="group-row" data-group="child" data-rate="0"><div><strong data-content="registration.childLabel">Children below 8</strong><small>Exempted · free entry</small></div><div class="counter"><button type="button" data-count-action="minus" aria-label="Remove child"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#minus"></use></svg></button><output aria-live="polite" aria-atomic="true">0</output><button type="button" data-count-action="plus" aria-label="Add child"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#plus"></use></svg></button></div></div>
+          <fieldset class="group-composition"><legend><span class="section-number">02</span><span data-content="registration.groupTitle">Group Composition</span></legend><p class="group-hint">Every explorer counts. Add everyone joining your visit.</p>
+            <div class="group-row" data-group="adult" data-rate="50"><span class="guest-avatar"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#users"></use></svg></span><div><strong data-content="registration.adultLabel">Adult (Local)</strong><small>Local visitor · ₱50 per person</small></div><div class="counter"><button type="button" data-count-action="minus" aria-label="Remove adult"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#minus"></use></svg></button><output aria-live="polite" aria-atomic="true">1</output><button type="button" data-count-action="plus" aria-label="Add adult"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#plus"></use></svg></button></div></div>
+            <div class="group-row" data-group="foreign" data-rate="100"><span class="guest-avatar"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#globe"></use></svg></span><div><strong data-content="registration.foreignLabel">Foreign Visitor</strong><small>Non-local visitor · ₱100 per person</small></div><div class="counter"><button type="button" data-count-action="minus" aria-label="Remove foreign visitor"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#minus"></use></svg></button><output aria-live="polite" aria-atomic="true">0</output><button type="button" data-count-action="plus" aria-label="Add foreign visitor"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#plus"></use></svg></button></div></div>
+            <div class="group-row" data-group="senior" data-rate="25"><span class="guest-avatar"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#heart"></use></svg></span><div><strong data-content="registration.seniorLabel">Senior / PWD / Student</strong><small>50% discounted rate · ₱25 per person</small></div><div class="counter"><button type="button" data-count-action="minus" aria-label="Remove discounted visitor"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#minus"></use></svg></button><output aria-live="polite" aria-atomic="true">0</output><button type="button" data-count-action="plus" aria-label="Add discounted visitor"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#plus"></use></svg></button></div></div>
+            <div class="group-row" data-group="child" data-rate="0"><span class="guest-avatar"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#sparkles"></use></svg></span><div><strong data-content="registration.childLabel">Children below 8</strong><small>Exempted · free entry</small></div><div class="counter"><button type="button" data-count-action="minus" aria-label="Remove child"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#minus"></use></svg></button><output aria-live="polite" aria-atomic="true">0</output><button type="button" data-count-action="plus" aria-label="Add child"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#plus"></use></svg></button></div></div>
           </fieldset>
           <label class="id-upload" id="idUploadField"><span aria-hidden="true"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#upload"></use></svg></span><strong data-content="registration.idLabel">Upload a valid ID for each discounted visitor</strong><input name="discountId" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small id="idFileName">No file selected</small></label>
           <p class="registration-note"><span aria-hidden="true"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#info"></use></svg></span><span data-content="registration.idNote">A valid ID is required for every senior, PWD, or student claiming the discounted rate.</span></p>
@@ -172,6 +196,8 @@
           <div class="registration-actions success-actions"><button class="button registration-back" type="button" data-download-pass disabled><span data-content="registration.downloadButton">Download Pass</span><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#download"></use></svg></button><button class="button button-green" type="button" data-save-pass disabled><span data-content="registration.saveButton">Save Pass</span><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#bookmark"></use></svg></button></div>
         </section>
       </form>
+        </div>
+      </div>
     </div>
   </dialog>
   <footer>
