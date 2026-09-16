@@ -76,6 +76,8 @@ function renderPass(pass){
   const qr=passModal.querySelector('#passQr');
   if(issued)qr.src=pass.qrDataUrl;else qr.removeAttribute('src');
   passModal.querySelector('.digital-pass').hidden=!issued;
+  passModal.querySelector('.success-step').dataset.paymentState=issued?'paid':'pending';
+  passModal.querySelector('.pass-ready-tip').hidden=!issued;
   const resultIcon=passModal.querySelector('.success-check');
   const state=issued?'paid':pass.paymentStatus==='PAY_AT_OFFICE'?'saved':'pending';
   if(resultIcon.dataset.state!==state){resultIcon.dataset.state=state;resultIcon.innerHTML=iconMarkup(issued?'check':state==='saved'?'receipt':'clock')}
@@ -83,7 +85,7 @@ function renderPass(pass){
   passModal.querySelector('.pass-status-chip').textContent=issued?'PAID':'PAYMENT PENDING';
   passModal.querySelector('.success-heading h2').textContent=issued?'Payment Successful!':pass.paymentStatus==='PAY_AT_OFFICE'?'Registration Saved':'Payment Pending';
   passModal.querySelector('.success-heading p').textContent=issued?'Your payment is confirmed and your EcoPass QR is ready.':pass.paymentStatus==='PAY_AT_OFFICE'?'Your registration is saved. Pay at the tourism office; staff will confirm payment before your QR pass is issued.':'Your registration is saved. Your QR pass will appear only after PayMongo confirms payment.';
-  passModal.querySelector('#passDetails').innerHTML=[['Registration ID',pass.id],['Name',pass.name],['Group',group],['Date of Visit',pass.visitDateLabel],['Length of Stay',pass.stay],['Valid Until',pass.validUntil],['Amount Due',`₱${pass.amount.toFixed(2)}`],['Payment',`${pass.paymentMethod} · ${paymentLabel(pass)}`]].map(([label,value])=>`<div><dt>${escapeDownload(label)}</dt><dd>${escapeDownload(value)}</dd></div>`).join('');
+  passModal.querySelector('#passDetails').innerHTML=[['Registration ID',pass.id],['Name',pass.name],['Group',group],['Date of Visit',pass.visitDateLabel],['Length of Stay',pass.stay],['Valid Until',pass.validUntil],[issued?'Amount Paid':'Amount Due',`₱${pass.amount.toFixed(2)}`],['Payment',`${pass.paymentMethod} · ${paymentLabel(pass)}`]].map(([label,value])=>`<div><dt>${escapeDownload(label)}</dt><dd>${escapeDownload(value)}</dd></div>`).join('');
 }
 let checkoutPopup=null,checkoutUrl='',checkoutPassId='',checkoutTimer=null;
 const checkoutSupport=passModal?.querySelector('.checkout-support');

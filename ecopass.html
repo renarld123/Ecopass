@@ -189,8 +189,18 @@
         </section>
         <section class="pass-step success-step" data-pass-step="3" hidden>
           <div class="success-heading"><span class="success-check" aria-hidden="true"><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#clock"></use></svg></span><h2 data-content="registration.successTitle">Registration Saved</h2><p data-content="registration.successDescription">A verified QR pass will be issued after payment is confirmed.</p></div>
-          <div class="digital-pass" hidden><span class="pass-status-chip">PAID</span><img id="passQr" alt="QR code for the paid EcoPass"><strong>EcoPass Visitor Pass</strong></div>
+          <div class="digital-pass" hidden>
+            <div class="ticket-brand"><span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#leaf"></use></svg> EcoPass</span><span class="pass-status-chip">PAID</span></div>
+            <div class="ticket-qr-wrap"><img id="passQr" alt="QR code for the paid EcoPass"></div>
+            <strong>One pass. A wonderful escape.</strong>
+            <p class="ticket-scan-hint">Present this QR at the tourism check-in.</p>
+            <div class="ticket-perforation" aria-hidden="true"></div>
+            <div class="ticket-bottom"><span>VISITOR PASS<small>Sipalay City, Philippines</small></span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#shield"></use></svg></div>
+          </div>
+          <div class="visit-receipt"><div class="pass-details-heading"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#bookmark"></use></svg><h3>Your visit, all in one place</h3></div>
           <dl class="pass-details" id="passDetails"></dl>
+          </div>
+          <p class="pass-ready-tip" hidden><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#download"></use></svg><span>Keep your pass handy.<small>Download it before your trip so you can show it even when you’re offline.</small></span></p>
           <div class="checkout-support" hidden aria-live="polite"><span class="checkout-spinner" aria-hidden="true"></span><p>Finish your payment in the secure PayMongo window. Your pass will update here when payment is confirmed.</p><button class="button registration-back" type="button" data-reopen-checkout>Open secure checkout</button></div>
           <p class="pass-form-status success" data-pass-status="3" role="status" aria-live="polite"></p>
           <div class="registration-actions success-actions"><button class="button registration-back" type="button" data-download-pass disabled><span data-content="registration.downloadButton">Download Pass</span><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#download"></use></svg></button><button class="button button-green" type="button" data-save-pass disabled><span data-content="registration.saveButton">Save Pass</span><svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#bookmark"></use></svg></button></div>
