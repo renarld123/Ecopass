@@ -9,6 +9,7 @@ const { Readable } = require('node:stream');
 const QRCode = require('qrcode');
 const { put: putBlob, get: getBlob, del: delBlob, BlobPreconditionFailedError } = require('@vercel/blob');
 const defaults = require('./site-defaults');
+const { renderLanding } = require('./landing-renderer');
 
 const ROOT = __dirname;
 const envFile = path.join(ROOT, '.env');
@@ -110,11 +111,9 @@ async function writeBlobJson(pathname, value) {
   await putBlob(pathname, JSON.stringify(value, null, 2), { access: 'private', allowOverwrite: true, contentType: 'application/json' });
 }
 async function readContent() {
-  try {
-    if (USE_BLOB) return sanitizeContent((await readBlobJson('data/site-content.json')) || defaults);
-    return sanitizeContent(JSON.parse(await fsp.readFile(CONTENT_FILE, 'utf8')));
-  }
-  catch { return clone(defaults); }
+  const content = USE_BLOB ? await readBlobJson('data/site-content.json') : JSON.parse(await fsp.readFile(CONTENT_FILE, 'utf8'));
+  if (!content) throw new Error('Saved site content is unavailable');
+  return sanitizeContent(content);
 }
 async function writeContent(content) {
   const next = sanitizeContent(content);
@@ -301,6 +300,20 @@ async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   let stage = 'request';
   try {
+    if (['/', '/ecopass.html'].includes(url.pathname) && ['GET', 'HEAD'].includes(req.method)) {
+      stage = 'landing-content';
+      try {
+        const [template, content] = await Promise.all([fsp.readFile(path.join(ROOT, 'ecopass.html'), 'utf8'), readContent()]);
+        const protocol = req.headers['x-forwarded-proto'] === 'https' || req.socket.encrypted ? 'https' : 'http';
+        const html = renderLanding(template, content, `${protocol}://${req.headers.host}`);
+        res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store', 'Content-Length': Buffer.byteLength(html) });
+        return res.end(req.method === 'HEAD' ? undefined : html);
+      } catch {
+        const html = '<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EcoPass</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f0e6;color:#075d34;font:16px system-ui}.message{max-width:420px;margin:24px;padding:32px;border-radius:24px;background:white}a{display:inline-block;padding:12px 20px;border-radius:10px;background:#ffb900;color:#173126;text-decoration:none;font-weight:700}</style><main class="message"><h1>We’ll be right back.</h1><p>We couldn’t load EcoPass just now. Please try again in a moment.</p><a href="/">Try again</a></main></html>';
+        res.writeHead(503, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store', 'Retry-After': '5' });
+        return res.end(req.method === 'HEAD' ? undefined : html);
+      }
+    }
     if (url.pathname === '/api/payment-config' && req.method === 'GET') return json(res, 200, { paymongoAvailable: Boolean(PAYMONGO_SECRET_KEY && PAYMONGO_WEBHOOK_SECRET), mode: PAYMONGO_MODE });
     if (url.pathname === '/api/paymongo/webhook' && req.method === 'POST') {
       const raw = await body(req, 1024 * 1024);

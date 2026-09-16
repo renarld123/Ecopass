@@ -1,0 +1,144 @@
+/* Shared icon language and interaction states, layered over the saved layout. */
+:root { --ease-out: cubic-bezier(.2,.75,.25,1); }
+.ui-icon { display:inline-block; width:22px; height:22px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; vertical-align:middle; }
+.icon-back { transform:rotate(180deg); }
+a,button,input,select { -webkit-tap-highlight-color:transparent; }
+a:focus-visible,button:focus-visible { outline:3px solid #dba600; outline-offset:4px; }
+.button { gap:10px; transition:background .2s,box-shadow .2s,transform .2s; }
+.button .ui-icon { width:18px; height:18px; transition:transform .22s var(--ease-out); }
+.button:not(:disabled):active { transform:translateY(1px) scale(.99); }
+.button:disabled { cursor:wait; opacity:.65; }
+.button[aria-busy="true"] .ui-icon { display:none; }
+.button[aria-busy="true"]::after { content:""; width:15px; height:15px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:checkoutSpin .75s linear infinite; }
+.text-link { display:inline-flex; align-items:center; gap:6px; }
+.text-link .ui-icon { width:17px; height:17px; transition:transform .2s; }
+.hero-benefits { gap:22px; }
+.hero-benefits>span { gap:10px; }
+.hero-benefits span:nth-child(2) { margin-right:0; }
+.hero-benefits i { position:relative; isolation:isolate; width:46px; height:46px; flex:0 0 46px; overflow:hidden; border:1px solid #fffdf6; border-radius:15px; background:linear-gradient(145deg,#fffef7,#f4ecd9); box-shadow:0 4px 0 #ded5bb55,0 7px 18px #4555360d; transition:transform .3s var(--ease-out),box-shadow .3s; }
+.hero-benefits i img { width:29px; height:29px; object-fit:contain; }
+.hero-benefits>span:first-child i::after { content:""; position:absolute; inset:10px 8px auto; height:2px; opacity:0; background:linear-gradient(90deg,transparent,#d4a41b,transparent); }
+.destination-card { transition:transform .3s var(--ease-out),box-shadow .3s; }
+.destination-card>img { transition:filter .35s; }
+.destination-card:focus-within { box-shadow:0 15px 35px #075d3426; }
+.destination-card .location { display:flex; align-items:center; gap:5px; }
+.location .ui-icon { width:15px; height:15px; }
+.destination-card a { display:inline-flex; min-height:36px; align-items:center; }
+.feature-grid article>span { width:48px; height:48px; flex-basis:48px; border:1px solid #ede5d0; border-radius:15px; box-shadow:0 5px 12px #17312608; transition:background .25s,transform .3s; }
+.feature-grid article>span .ui-icon { width:26px; height:26px; }
+.support-contacts i { border:1px solid #e0ebdd; box-shadow:0 5px 0 #e0e9dc70; transition:transform .3s,background .3s; }
+.support-social-icon .ui-icon { width:28px; height:28px; }
+.support-map-button .ui-icon { width:16px; height:16px; }
+.socials a { display:grid; width:37px; height:37px; margin:0; align-items:center; justify-items:center; border:1px solid #ffffff35; border-radius:11px; background:#ffffff0a; transition:background .2s,transform .2s; }
+.socials .ui-icon { width:18px; height:18px; }
+.socials a:hover { background:#ffffff20; transform:translateY(-2px); }
+.stats i { transition:transform .3s; }
+.how-modal-card { max-height:calc(100dvh - 36px); overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#adc5b5 transparent; background:radial-gradient(circle at 100% 100%,#dcead7,transparent 40%),#edf3e7; }
+.how-modal-card::after { display:none; }
+.how-modal[open] .how-modal-card { animation:paymentModalEnter .3s var(--ease-out) both; }
+.how-modal[open]::backdrop,.pass-modal[open]::backdrop { animation:backdropEnter .25s ease-out both; }
+dialog[data-closing]::backdrop { animation:backdropExit .15s ease-in both; }
+.how-modal-close,.pass-modal-close { transition:background .2s,transform .2s; }
+.how-modal-close .ui-icon,.pass-modal-close .ui-icon { width:21px; height:21px; }
+.how-modal-steps article { transition:transform .28s var(--ease-out),box-shadow .28s; }
+.how-modal-steps .step-icon { display:grid; width:76px; height:76px; margin:0 auto 14px; border:1px solid #deeadc; border-radius:23px; background:linear-gradient(135deg,#f6fbf2,#fff7dd); place-items:center; }
+.how-modal-steps .step-icon img { width:55px; height:55px; transition:transform .3s var(--ease-out); }
+.how-modal-steps article { min-height:270px; }
+.how-modal-steps article:nth-child(2) { transition-delay:25ms; }
+.how-modal-steps article:nth-child(3) { transition-delay:50ms; }
+.pass-modal-card { scrollbar-width:thin; scrollbar-color:#adc5b5 transparent; overscroll-behavior:contain; }
+.pass-modal[open] .pass-modal-card { animation-duration:.3s; }
+.pass-step h2:focus { outline:none; }
+.pass-progress { margin-bottom:25px; }
+.pass-progress span { position:relative; width:34px; height:34px; flex-basis:34px; }
+.pass-progress .ui-icon { width:17px; height:17px; }
+.pass-progress i { transition:background .3s; }
+.pass-progress span.active { box-shadow:0 0 0 4px #075d3410; }
+.registration-heading p { line-height:1.5; }
+.registration-icon>img { width:37px; height:37px; object-fit:contain; }
+.registration-icon.payment-icon { background:linear-gradient(145deg,#fff7e1,#ffedbc); border:1px solid #f1dfab; }
+.registration-icon.payment-icon .ui-icon { width:29px; height:29px; stroke-width:1.7; }
+.registration-field input,.registration-field select { transition:border-color .18s,box-shadow .18s,background .18s; }
+.registration-field:focus-within>span { color:var(--green); }
+.group-row { transition:border-color .2s,background .2s; }
+.group-row:focus-within { border-color:#7f9e89; background:#f0f7ef; }
+.counter { gap:8px; }
+.counter button { width:34px; height:34px; transition:background .2s,color .2s,transform .15s; }
+.counter button .ui-icon { width:15px; height:15px; stroke-width:2; }
+.counter button:disabled { opacity:.35; cursor:not-allowed; background:#fff; color:#075d34; }
+.counter button:not(:disabled):active { transform:scale(.9); }
+.counter output { min-width:22px; font-variant-numeric:tabular-nums; }
+.id-upload { transition:background .2s,border-color .2s; }
+.id-upload>span .ui-icon { width:15px; height:15px; }
+.id-upload:focus-within { outline:3px solid #e5b434; outline-offset:3px; }
+.id-upload.has-file { background:#e4f2e6; border-style:solid; }
+.registration-note .ui-icon { width:16px; height:16px; }
+.payment-badge .ui-icon { width:22px; height:22px; stroke-width:1.6; }
+.payment-methods label { transition:background .2s,border-color .2s,box-shadow .2s; }
+.payment-methods label:focus-within { outline:3px solid #dba60055; outline-offset:2px; }
+.payment-methods input { min-width:19px; min-height:19px; }
+.preparing-payment { color:#44614f; padding:11px 13px; border-radius:10px; background:#edf4ef; }
+.success-check { width:58px; height:58px; margin-bottom:13px; border:1px solid #e0e9dc; background:#edf3e9; }
+.success-check .ui-icon { width:28px; height:28px; stroke-width:2; }
+.success-check[data-state="pending"] { background:#fff5dd; color:#98720c; border-color:#eedeb4; }
+.success-check[data-state="paid"] { background:#e5f5e8; color:var(--green); animation:confirmedEnter .45s var(--ease-out); }
+.pass-details { margin-top:18px; }
+.pass-details dd { overflow-wrap:anywhere; }
+.success-actions button:disabled { cursor:not-allowed; }
+.reveal-in { animation:sectionEnter .5s var(--ease-out) var(--reveal-delay,0ms) both; }
+@media(hover:hover) and (pointer:fine) {
+  .button:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 10px 24px #15342420; }
+  .button:not(:disabled):hover .ui-icon:not(.icon-back),.text-link:hover .ui-icon { transform:translateX(3px); }
+  .hero-benefits>span:hover i { transform:translateY(-3px) rotate(-3deg); box-shadow:0 5px 0 #ded5bb55,0 10px 22px #45553615; }
+  .hero-benefits>span:first-child:hover i::after { animation:iconScan .9s ease-in-out 2; }
+  .hero-benefits>span:nth-child(2):hover img { animation:leafSway .7s ease-in-out; }
+  .hero-benefits>span:nth-child(3):hover img { animation:travelerStep .55s ease-in-out; }
+  .destination-card:hover { transform:translateY(-5px); box-shadow:0 19px 38px #183b2524; }
+  .destination-card:hover>img { filter:saturate(1.08); }
+  .feature-grid article:hover>span,.support-contacts>a:hover i { transform:translateY(-3px) rotate(-4deg); background:#fff7da; }
+  .stats>div:hover i { transform:translateY(-3px); }
+  .how-modal-steps article:hover { transform:translateY(-4px); box-shadow:0 14px 28px #26483118; }
+  .how-modal-steps article:hover img { transform:rotate(-5deg) scale(1.06); }
+  .payment-methods label:not(.unavailable):hover { border-color:#8eb29b; }
+  .how-modal-close:hover,.pass-modal-close:hover { transform:rotate(6deg); }
+}
+@keyframes sectionEnter { from { opacity:.65; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes backdropEnter { from { opacity:0; } to { opacity:1; } }
+@keyframes backdropExit { from { opacity:1; } to { opacity:0; } }
+@keyframes iconScan { 0%,100% { opacity:0; transform:translateY(0); } 20% { opacity:1; } 80% { opacity:1; transform:translateY(25px); } }
+@keyframes leafSway { 30% { transform:rotate(-10deg); } 70% { transform:rotate(7deg); } }
+@keyframes travelerStep { 35% { transform:translateY(-3px) rotate(4deg); } 70% { transform:translateY(1px) rotate(-3deg); } }
+@keyframes confirmedEnter { from { transform:scale(.8); opacity:.5; } 65% { transform:scale(1.08); } to { transform:scale(1); opacity:1; } }
+@media(max-width:620px) {
+  .hero-benefits { gap:13px 17px; }
+  .hero-benefits i { width:40px; height:40px; flex-basis:40px; border-radius:13px; }
+  .hero-benefits i img { width:26px; height:26px; }
+  .hero-benefits>span { gap:8px; }
+  .how-modal-card { max-height:calc(100dvh - 20px); }
+  .how-modal-steps article { min-height:0; grid-template-columns:34px 51px minmax(0,1fr); gap:0 8px; }
+  .how-modal-steps .step-icon { width:46px; height:50px; margin:0; border-radius:14px; }
+  .how-modal-steps .step-icon img { width:35px; height:39px; }
+  .counter button { width:44px; height:44px; }
+  .counter { gap:3px; }
+  .group-row { gap:8px; padding-inline:9px; }
+  .group-row strong { font-size:12px; }
+  .group-row small { font-size:10px; line-height:1.35; }
+  .registration-field input,.registration-field select { font-size:16px; min-height:46px; }
+  .registration-heading h2,.success-heading h2 { font-size:27px; }
+  .pass-progress { margin-bottom:20px; width:min(270px,70%); }
+  .registration-actions .button { padding-inline:14px; }
+  .success-actions .button { gap:6px; }
+  .how-modal-close,.pass-modal-close { min-width:40px; min-height:40px; }
+}
+@media(max-width:480px) {
+  .hero-benefits { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .hero-benefits>span { flex-direction:column; align-items:center; gap:9px; font-size:10px; }
+  .hero-benefits i { width:44px; height:44px; flex-basis:44px; }
+  .hero-copy { padding-bottom:22px; }
+  .hero-visual { min-height:340px; }
+  .hero-frame { top:0; bottom:24px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  html { scroll-behavior:auto; }
+  *,*::before,*::after { animation:none!important; transition:none!important; }
+}

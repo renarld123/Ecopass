@@ -49,7 +49,7 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(html, /data-download-pass[^>]+disabled/);
   assert.match(landingJs, /pass\.passIssued===true&&pass\.paymentStatus==='PAID'&&Boolean\(pass\.qrDataUrl\)/);
   assert.match(landingJs, /restorePendingCheckout\(\)/);
-  assert.match(html, /property="og:image" content="https:\/\/ecopass-production\.up\.railway\.app\/ecopass-social-card\.png"/);
+  assert.match(html, /property="og:image" content="https:\/\/ecopass-rose\.vercel\.app\/ecopass-social-card\.png"/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
   assert.match(landingJs, /link\.download=`EcoPass-\$\{currentPass\.id\}\.png`/);
   assert.match(landingJs, /toBlob\(resolve,'image\/png'/);
@@ -237,6 +237,8 @@ test('server protects writes and persists authenticated content updates', async 
   assert.equal(avatarRemoval.status, 200);
   assert.match((await avatarRemoval.json()).url, /^https:\/\/images\.unsplash\.com\//);
   current.hero.title = 'Persisted integration test title';
+  current.hero.titleLine1 = 'Saved first-paint title';
+  current.hero.image = '/uploads/saved-hero-example.png';
   current.stories.items[0].quote = 'Persisted integration test story';
   const saved = await fetch(`${base}/api/admin/content`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify(current) });
   assert.equal(saved.status, 200);
@@ -244,4 +246,32 @@ test('server protects writes and persists authenticated content updates', async 
   const reread = await (await fetch(`${base}/api/content`)).json();
   assert.equal(reread.hero.title, 'Persisted integration test title');
   assert.equal(reread.stories.items[0].quote, 'Persisted integration test story');
+  for (const route of ['/', '/ecopass.html']) {
+    const page = await fetch(`${base}${route}`);
+    assert.equal(page.status, 200);
+    assert.equal(page.headers.get('cache-control'), 'no-store');
+    const firstPaint = await page.text();
+    assert.match(firstPaint, /data-content="hero.titleLine1">Saved first-paint title<\/span>/);
+    assert.match(firstPaint, /data-image="hero.image" src="\/uploads\/saved-hero-example.png"/);
+    assert.doesNotMatch(firstPaint, /src="ecopass-hero-upload-transparent.png"/);
+    assert.match(firstPaint, /id="ecopass-bootstrap"/);
+  }
+});
+
+test('saved landing content renders safely before browser scripts run', async () => {
+  const { renderLanding } = require('./landing-renderer');
+  const template = await fs.readFile(path.join(__dirname, 'ecopass.html'), 'utf8');
+  const content = sanitizeContent({
+    hero: { titleLine1: '<img src=x onerror=alert(1)> $&', image: '/uploads/a.png?one=1&two=2' },
+    brand: { logoImage: '</script><script>alert(1)</script>' },
+    support: { facebookUrl: 'javascript:alert(1)' }
+  });
+  const rendered = renderLanding(template, content, 'https://ecopass.example');
+  assert.match(rendered, /&lt;img src=x onerror=alert\(1\)&gt; \$&amp;/);
+  assert.match(rendered, /src="\/uploads\/a.png\?one=1&amp;two=2"/);
+  assert.doesNotMatch(rendered, /<script>alert\(1\)<\/script>|href="javascript:/);
+  const bootstrap = JSON.parse(rendered.match(/id="ecopass-bootstrap" type="application\/json">([^<]+)<\/script>/)[1]);
+  assert.equal(bootstrap.rendered, true);
+  assert.equal(bootstrap.brandLogo, content.brand.logoImage);
+  assert.match(rendered, /property="og:url" content="https:\/\/ecopass.example\/"/);
 });

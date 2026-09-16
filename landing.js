@@ -1,17 +1,30 @@
 'use strict';
 let activeBrandLogo='/ecopass-logo-v2.png';
+const iconMarkup=name=>`<svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#${name}"></use></svg>`;
+function closeDialogSmoothly(dialog){
+  if(!dialog?.open||dialog.dataset.closing)return;
+  const finish=()=>{if(dialog.open)dialog.close();delete dialog.dataset.closing};
+  const card=dialog.querySelector('.pass-modal-card,.how-modal-card');
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||!card?.animate){finish();return}
+  dialog.dataset.closing='true';
+  card.animate([{opacity:1,transform:'translateY(0) scale(1)'},{opacity:0,transform:'translateY(10px) scale(.985)'}],{duration:150,easing:'ease-in'}).finished.then(finish,finish);
+}
+function syncModalScrollLock(){document.body.classList.toggle('modal-open',Boolean(document.querySelector('dialog[open]')))}
 const getPath=(object,path)=>{const normalized=path.replace(/^destinations\.(\d+)\./,'destinations.items.$1.');return normalized.split('.').reduce((value,key)=>value?.[Number.isInteger(Number(key))?Number(key):key],object)};
-async function loadContent(){if(location.protocol==='file:')return;try{const response=await fetch('/api/content',{headers:{Accept:'application/json'}});if(!response.ok)throw new Error();const content=await response.json();activeBrandLogo=content.brand.logoImage||activeBrandLogo;document.querySelectorAll('[data-content]').forEach(element=>{const value=getPath(content,element.dataset.content);if(typeof value==='string')element.textContent=value});document.querySelectorAll('[data-image]').forEach(image=>{const value=getPath(content,image.dataset.image);if(typeof value==='string'&&value)image.src=value});document.querySelectorAll('[data-link]').forEach(element=>{const value=getPath(content,element.dataset.link);if(typeof value!=='string'||!value)return;const allowed=/^(?:https?:|mailto:|tel:|#|\/)/i.test(value);if(!allowed)return;if(element.tagName==='IFRAME'){if(/^https?:/i.test(value))element.src=value}else element.href=value});const favicon=document.querySelector('[data-favicon]');if(favicon&&content.brand.faviconImage){const joiner=content.brand.faviconImage.includes('?')?'&':'?';favicon.href=`${content.brand.faviconImage}${joiner}v=${encodeURIComponent(content.updatedAt||'default')}`}document.querySelectorAll('[data-contact]').forEach(contact=>contact.href=`mailto:${content.brand.contact}`);document.title=`${content.brand.name} — Sipalay City`}catch{const status=document.querySelector('.page-status');status.textContent='Live content is temporarily unavailable. Showing the latest built-in version.';status.hidden=false}}
+async function loadContent(){
+  const bootstrap=document.querySelector('#ecopass-bootstrap');
+  if(bootstrap){try{const initial=JSON.parse(bootstrap.textContent);if(initial.rendered){activeBrandLogo=initial.brandLogo||activeBrandLogo;return}}catch{}}
+  if(location.protocol==='file:')return;try{const response=await fetch('/api/content',{headers:{Accept:'application/json'}});if(!response.ok)throw new Error();const content=await response.json();activeBrandLogo=content.brand.logoImage||activeBrandLogo;document.querySelectorAll('[data-content]').forEach(element=>{const value=getPath(content,element.dataset.content);if(typeof value==='string')element.textContent=value});document.querySelectorAll('[data-image]').forEach(image=>{const value=getPath(content,image.dataset.image);if(typeof value==='string'&&value)image.src=value});document.querySelectorAll('[data-link]').forEach(element=>{const value=getPath(content,element.dataset.link);if(typeof value!=='string'||!value)return;const allowed=/^(?:https?:|mailto:|tel:|#|\/)/i.test(value);if(!allowed)return;if(element.tagName==='IFRAME'){if(/^https?:/i.test(value))element.src=value}else element.href=value});const favicon=document.querySelector('[data-favicon]');if(favicon&&content.brand.faviconImage){const joiner=content.brand.faviconImage.includes('?')?'&':'?';favicon.href=`${content.brand.faviconImage}${joiner}v=${encodeURIComponent(content.updatedAt||'default')}`}document.querySelectorAll('[data-contact]').forEach(contact=>contact.href=`mailto:${content.brand.contact}`);document.title=`${content.brand.name} — Sipalay City`}catch{const status=document.querySelector('.page-status');status.textContent='We couldn’t refresh this page. Please try again in a moment.';status.hidden=false}}
 const howModal=document.querySelector('#how-modal');
 const howModalClose=howModal?.querySelector('.how-modal-close');
 let howModalTrigger=null;
-function closeHowModal(){if(!howModal)return;if(typeof howModal.close==='function'&&howModal.open)howModal.close();else howModal.removeAttribute('open')}
+function closeHowModal(){closeDialogSmoothly(howModal)}
 function openHowModal(trigger){if(!howModal)return;howModalTrigger=trigger||document.activeElement;if(typeof howModal.showModal==='function'){if(!howModal.open)howModal.showModal()}else howModal.setAttribute('open','');document.body.classList.add('modal-open')}
 document.querySelectorAll('[data-how-modal-open]').forEach(trigger=>trigger.addEventListener('click',event=>{event.preventDefault();openHowModal(trigger)}));
 howModalClose?.addEventListener('click',closeHowModal);
 howModal?.addEventListener('click',event=>{if(event.target===howModal)closeHowModal()});
-howModal?.addEventListener('close',()=>{document.body.classList.remove('modal-open');howModalTrigger?.focus();howModalTrigger=null});
-howModal?.addEventListener('cancel',()=>document.body.classList.remove('modal-open'));
+howModal?.addEventListener('close',()=>{syncModalScrollLock();howModalTrigger?.focus();howModalTrigger=null});
+howModal?.addEventListener('cancel',event=>{event.preventDefault();closeHowModal()});
 if(location.hash==='#how-modal')openHowModal();
 const passModal=document.querySelector('#pass-modal');
 const passModalClose=passModal?.querySelector('.pass-modal-close');
@@ -23,8 +36,25 @@ const registrationRates={adult:50,foreign:100,senior:25,child:0};
 let currentPass=null;
 let uploadedIdToken='';
 let passModalTrigger=null;
-function closePassModal(){if(!passModal)return;if(typeof passModal.close==='function'&&passModal.open)passModal.close();else passModal.removeAttribute('open')}
-function showRegistrationStep(step){passModal?.querySelectorAll('[data-pass-step]').forEach(section=>section.hidden=Number(section.dataset.passStep)!==step);const progress=[...passModal.querySelectorAll('[data-pass-progress]')];progress.forEach(item=>{const value=Number(item.dataset.passProgress);item.classList.toggle('active',value===step);item.classList.toggle('complete',value<step)});passModal.querySelectorAll('.pass-progress i').forEach((line,index)=>line.classList.toggle('complete',index<step-1));passModal.querySelector('.pass-modal-card').scrollTop=0}
+function closePassModal(){closeDialogSmoothly(passModal)}
+function showRegistrationStep(step){
+  passModal?.querySelectorAll('[data-pass-step]').forEach(section=>section.hidden=Number(section.dataset.passStep)!==step);
+  const progress=[...passModal.querySelectorAll('[data-pass-progress]')];
+  progress.forEach(item=>{
+    const value=Number(item.dataset.passProgress);
+    item.classList.toggle('active',value===step);item.classList.toggle('complete',value<step);
+    item.innerHTML=value<step?iconMarkup('check'):String(value);
+    item.setAttribute('aria-label',`Step ${value}: ${['Registration','Payment','Your pass'][value-1]}${value<step?', complete':''}`);
+    if(value===step)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');
+  });
+  passModal.querySelectorAll('.pass-progress i').forEach((line,index)=>line.classList.toggle('complete',index<step-1));
+  passModal.querySelector('.pass-modal-card').scrollTop=0;
+  const heading=passModal.querySelector(`[data-pass-step="${step}"] h2`);
+  heading.id=step===1?'pass-modal-title':`pass-step-${step}-title`;
+  heading.tabIndex=-1;
+  passModal.setAttribute('aria-labelledby',heading.id);
+  if(passModal.open)heading.focus({preventScroll:true});
+}
 function openPassModal(trigger){if(!passModal)return;passModalTrigger=trigger||document.activeElement;showRegistrationStep(1);passModal.querySelectorAll('.pass-form-status').forEach(status=>{status.textContent='';status.classList.remove('success')});const today=new Date();visitDateInput.min=new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);if(typeof passModal.showModal==='function'){if(!passModal.open)passModal.showModal()}else passModal.setAttribute('open','');document.body.classList.add('modal-open')}
 document.querySelectorAll('[data-pass-modal-open]').forEach(trigger=>trigger.addEventListener('click',event=>{event.preventDefault();openPassModal(trigger)}));
 function registrationTotal(){return Object.keys(registrationCounts).reduce((total,key)=>total+registrationCounts[key]*registrationRates[key],0)}
@@ -44,6 +74,9 @@ function renderPass(pass){
   const qr=passModal.querySelector('#passQr');
   if(issued)qr.src=pass.qrDataUrl;else qr.removeAttribute('src');
   passModal.querySelector('.digital-pass').hidden=!issued;
+  const resultIcon=passModal.querySelector('.success-check');
+  const state=issued?'paid':pass.paymentStatus==='PAY_AT_OFFICE'?'saved':'pending';
+  if(resultIcon.dataset.state!==state){resultIcon.dataset.state=state;resultIcon.innerHTML=iconMarkup(issued?'check':state==='saved'?'receipt':'clock')}
   passModal.querySelectorAll('[data-download-pass],[data-save-pass]').forEach(button=>button.disabled=!issued);
   passModal.querySelector('.pass-status-chip').textContent=issued?'PAID':'PAYMENT PENDING';
   passModal.querySelector('.success-heading h2').textContent=issued?'Payment Successful!':pass.paymentStatus==='PAY_AT_OFFICE'?'Registration Saved':'Payment Pending';
@@ -112,7 +145,7 @@ passModal?.querySelector('[data-registration-complete]')?.addEventListener('clic
   const reservedPopup=online?openSecureCheckout():null;
   status.textContent='Saving your registration and preparing payment…';
   status.classList.add('preparing-payment');
-  button.disabled=true;
+  button.disabled=true;button.setAttribute('aria-busy','true');
   try{
     const response=await fetch('/api/registrations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(buildRegistrationPayload())});
     const result=await response.json();
@@ -134,7 +167,7 @@ passModal?.querySelector('[data-registration-complete]')?.addEventListener('clic
     currentPass={...result.pass,name:result.pass.fullName,visitDateLabel:formatPassDate(result.pass.visitDate),validUntil:formatPassDate(result.pass.validUntil),qrDataUrl:result.qrDataUrl,verifyUrl:result.verifyUrl};
     renderPass(currentPass);showRegistrationStep(3);
   }catch(error){if(reservedPopup)reservedPopup.close();status.textContent=error.message}
-  finally{status.classList.remove('preparing-payment');button.disabled=false}
+  finally{status.classList.remove('preparing-payment');button.disabled=false;button.removeAttribute('aria-busy')}
 });
 function escapeDownload(value){return String(value).replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]))}
 function loadCanvasImage(source){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Pass artwork could not be loaded.'));image.src=source})}
@@ -146,8 +179,8 @@ passModal?.querySelector('[data-download-pass]')?.addEventListener('click',()=>{
 passModal?.querySelector('[data-save-pass]')?.addEventListener('click',()=>{if(!currentPass?.passIssued||!currentPass.qrDataUrl)return;const status=passModal.querySelector('[data-pass-status="3"]');try{localStorage.setItem('ecopassSavedPass',JSON.stringify(currentPass));status.textContent='Pass saved on this device. You can also download a portable copy.';status.classList.add('success')}catch{status.textContent='This browser could not save the pass. Please download it instead.';status.classList.remove('success')}});
 passModalClose?.addEventListener('click',closePassModal);
 passModal?.addEventListener('click',event=>{if(event.target===passModal)closePassModal()});
-passModal?.addEventListener('close',()=>{document.body.classList.remove('modal-open');passModalTrigger?.focus();passModalTrigger=null});
-passModal?.addEventListener('cancel',()=>document.body.classList.remove('modal-open'));
+passModal?.addEventListener('close',()=>{syncModalScrollLock();passModalTrigger?.focus();passModalTrigger=null});
+passModal?.addEventListener('cancel',event=>{event.preventDefault();closePassModal()});
 async function configurePaymentChoices(){try{const response=await fetch('/api/payment-config');const config=await response.json();const online=passModal?.querySelectorAll('input[name="paymentMethod"]');online?.forEach(input=>{if(['GCash','Maya','Credit/Debit Card'].includes(input.value)){input.disabled=!config.paymongoAvailable;input.closest('label').classList.toggle('unavailable',!config.paymongoAvailable)}});if(!config.paymongoAvailable){const cash=passModal?.querySelector('input[value="Pay at Tourism Office (Cash)"]');if(cash)cash.checked=true}const note=passModal?.querySelector('.payment-notice');if(note)note.textContent=config.paymongoAvailable?`Online payment opens PayMongo's secure ${config.mode==='live'?'live':'test'} checkout. Card details are entered on PayMongo. Your pass is marked paid after payment is confirmed.`:'Online checkout is not connected yet. You may register and pay at the tourism office.'}catch{} }
 async function showReturnedPayment(){
   const params=new URLSearchParams(location.search),passId=params.get('pass'),result=params.get('payment');

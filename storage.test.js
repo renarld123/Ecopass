@@ -68,6 +68,11 @@ test('registration storage retries real SDK conflicts and preserves existing rec
   const previousWrites = writes;
   failReads = true;
   await assert.rejects(ensureStorage(), /Storage unavailable/);
+  const unavailablePage = await fetch(`http://127.0.0.1:${server.address().port}/`);
+  assert.equal(unavailablePage.status, 503);
+  const unavailableHtml = await unavailablePage.text();
+  assert.match(unavailableHtml, /Try again/);
+  assert.doesNotMatch(unavailableHtml, /ecopass-hero-upload-transparent|Explore responsibly/);
   assert.equal(writes, previousWrites, 'Read failures must never initialize or overwrite data');
   failReads = false;
   objects.set('data/registrations.json', { text: 'invalid JSON', version: 5 });
