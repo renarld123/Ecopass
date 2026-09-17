@@ -262,13 +262,13 @@ function verifyPaymongoSignature(raw, header, livemode) {
   return crypto.timingSafeEqual(Buffer.from(sent, 'hex'), Buffer.from(expected, 'hex'));
 }
 function cleanRegistration(input) {
-  const counts = Object.fromEntries(['adult', 'foreign', 'senior', 'child'].map(key => [key, Math.max(key === 'adult' ? 1 : 0, Math.min(50, Number.parseInt(input?.groups?.[key], 10) || 0))]));
+  const counts = Object.fromEntries(['adult', 'foreign', 'senior', 'child'].map(key => [key, Math.max(0, Math.min(50, Number.parseInt(input?.groups?.[key], 10) || 0))]));
   const stays = ['1D / 0N','2D / 1N','3D / 2N','4D / 3N','5D / 4N','6D / 5N','7D / 6N'];
   const methods = ['GCash','Maya','Credit/Debit Card','Pay at Tourism Office (Cash)','Physical Payment'];
   const date = String(input?.visitDate || ''); const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
   const today = new Date(); today.setUTCHours(0,0,0,0);
   const value = { fullName: cleanText(input?.fullName, 100), address: cleanText(input?.address, 180), contact: cleanText(input?.contact, 30), visitDate: date, stay: stays.includes(input?.stay) ? input.stay : '', groups: counts, paymentMethod: methods.includes(input?.paymentMethod) ? input.paymentMethod : '', idToken: cleanText(input?.idToken, 1000) };
-  if (value.fullName.length < 2 || value.address.length < 5 || !/^[+\d][\d\s()-]{6,29}$/.test(value.contact) || !parsedDate || parsedDate < today || !value.stay || !value.paymentMethod) throw Object.assign(new Error('Please provide complete and valid registration details.'), { status: 400 });
+  if (value.fullName.length < 2 || value.address.length < 5 || !/^[+\d][\d\s()-]{6,29}$/.test(value.contact) || !parsedDate || parsedDate < today || !value.stay || !value.paymentMethod || counts.adult + counts.foreign + counts.senior === 0) throw Object.assign(new Error('Please provide complete and valid registration details, including at least one paying or discounted visitor.'), { status: 400 });
   const idUpload = counts.senior > 0 ? verifyIdUpload(value.idToken) : null; if (counts.senior > 0 && !idUpload) throw Object.assign(new Error('A valid ID upload is required for discounted visitors.'), { status: 400 });
   const amount = counts.adult * 50 + counts.foreign * 100 + counts.senior * 25;
   const days = Number.parseInt(value.stay, 10); const validUntil = new Date(parsedDate); validUntil.setUTCDate(validUntil.getUTCDate() + days - 1);

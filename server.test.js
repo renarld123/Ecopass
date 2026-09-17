@@ -145,9 +145,14 @@ test('server protects writes and persists authenticated content updates', async 
   const publicResponse = await fetch(`${base}/api/content`);
   assert.equal(publicResponse.status, 200);
   const current = await publicResponse.json();
+  const landingHtml = await (await fetch(`${base}/`)).text();
+  assert.match(landingHtml, /data-trip-guests>0 guests/);
+  assert.match(landingHtml, /data-group="adult"[\s\S]*?<output aria-live="polite" aria-atomic="true">0<\/output>/);
   const health = await (await fetch(`${base}/health`)).json();
   assert.equal(health.status, 'ok');
   assert.equal(health.adminConfigured, true);
+  const emptyGroup = await fetch(`${base}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName: 'Test Tourist', address: 'Sipalay City, Philippines', contact: '0917 000 0000', visitDate: '2099-10-10', stay: '3D / 2N', groups: { adult: 0, foreign: 0, senior: 0, child: 0 }, paymentMethod: 'Pay at Tourism Office (Cash)' }) });
+  assert.equal(emptyGroup.status, 400);
   const onlineNotReady = await fetch(`${base}/api/registrations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName: 'Test Tourist', address: 'Sipalay City, Philippines', contact: '0917 000 0000', visitDate: '2099-10-10', stay: '3D / 2N', groups: { adult: 2, foreign: 0, senior: 0, child: 1 }, paymentMethod: 'GCash' }) });
   assert.equal(onlineNotReady.status, 503);
   const unsignedWebhook = await fetch(`${base}/api/paymongo/webhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: { type: 'checkout_session.payment.paid', livemode: false } }) });
