@@ -1,5 +1,27 @@
 'use strict';
 
+document.querySelector('#how-start')?.addEventListener('click', () => {
+  document.querySelector('#how-modal').close();
+  openPassModal();
+});
+const resortSearch = document.querySelector('#resort-search');
+function showResortResults(query, selectedButton) {
+  document.querySelector('#resort-map').src = 'https://www.google.com/maps?q=' + encodeURIComponent(query) + '&output=embed';
+  document.querySelector('#resort-map').title = query;
+  document.querySelector('#resort-maps-link').href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
+  document.querySelector('#resort-map-status').textContent = 'Map search: ' + query;
+  document.querySelectorAll('[data-resort-query]').forEach(button => button.setAttribute('aria-pressed', String(button === selectedButton)));
+}
+resortSearch?.addEventListener('submit', event => {
+  event.preventDefault();
+  const term = document.querySelector('#resort-query').value.trim();
+  showResortResults(term ? term + ', Sipalay City, Philippines' : 'Resorts in Sipalay City Philippines', term ? null : document.querySelector('[data-resort-query]'));
+});
+document.querySelectorAll('[data-resort-query]').forEach(button => button.addEventListener('click', () => {
+  document.querySelector('#resort-query').value = '';
+  showResortResults(button.dataset.resortQuery, button);
+}));
+
 (() => {
   const modal = document.querySelector('#pass-modal');
   const form = document.querySelector('#passForm');

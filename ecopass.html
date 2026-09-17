@@ -90,7 +90,14 @@
           <a data-link="support.messengerUrl" href="https://www.messenger.com/" target="_blank" rel="noopener"><i aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M27 15c0 6-5 10-11 10-1 0-3 0-4-.5L6 28l1-6c-2-2-3-4-3-7C4 9 9 5 16 5s11 4 11 10Z"/><path d="m10 18 5-5 3 3 5-4-5 7-3-3-5 2Z"/></svg></i><strong>Chat With Us</strong><span data-content="support.messengerLabel">Message Us</span></a>
         </div>
         <div class="support-address"><i aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M25 13c0 7-9 15-9 15S7 20 7 13a9 9 0 1 1 18 0Z"/><circle cx="16" cy="13" r="3"/></svg></i><span data-content="support.address">Sipalay City, Negros Occidental, Philippines</span></div>
-        <div class="support-map"><iframe data-link="support.mapEmbedUrl" src="https://www.google.com/maps?q=Sipalay+City%2C+Negros+Occidental%2C+Philippines&amp;output=embed" title="EcoPass support location map" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a class="support-map-button" data-link="support.mapsUrl" href="https://www.google.com/maps/search/?api=1&amp;query=Sipalay+City%2C+Negros+Occidental%2C+Philippines" target="_blank" rel="noopener">Open in Maps <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="/landing-icons.svg#external"></use></svg></a></div>
+        <div class="resort-explorer">
+          <div class="resort-intro"><span class="how-modal-kicker">FIND YOUR LITTLE PARADISE</span><h2>Where will you unwind?</h2><p>Explore resorts around Sipalay, from quiet coves to beachside stays.</p></div>
+          <form class="resort-search" id="resort-search"><label for="resort-query">Find a resort or beach</label><div><input id="resort-query" type="search" placeholder="Resort name or beach…" maxlength="120"><button class="button button-green" type="submit">Search map</button></div></form>
+          <div class="resort-filters" aria-label="Explore resort areas"><button type="button" data-resort-query="Resorts in Sipalay City Philippines" aria-pressed="true">All areas</button><button type="button" data-resort-query="Resorts Sugar Beach Sipalay Philippines" aria-pressed="false">Sugar Beach</button><button type="button" data-resort-query="Resorts Punta Ballo Sipalay Philippines" aria-pressed="false">Punta Ballo</button><button type="button" data-resort-query="Resorts Campomanes Bay Sipalay Philippines" aria-pressed="false">Campomanes Bay</button></div>
+          <div class="support-map"><iframe id="resort-map" src="https://www.google.com/maps?q=Resorts+in+Sipalay+City+Philippines&amp;output=embed" title="Resorts in Sipalay City" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+          <div class="resort-map-footer"><p id="resort-map-status" role="status">Exploring resorts across Sipalay City</p><a id="resort-maps-link" class="button registration-back" href="https://www.google.com/maps/search/?api=1&amp;query=Resorts+in+Sipalay+City+Philippines" target="_blank" rel="noopener">Browse results in Google Maps ↗</a></div>
+          <p class="resort-disclaimer">Google Maps controls the listings and pins shown; this is not a complete official resort directory. Open the full results for more places, photos, reviews, and directions. Confirm availability directly with each resort.</p>
+        </div>
       </div>
     </section>
     <section class="cta" id="cta">
@@ -120,8 +127,9 @@
             <article><span class="step-number" data-content="how.steps.1.number">02</span><span class="step-icon" aria-hidden="true"><img data-image="how.steps.1.iconImage" src="ecopass-step-phone.svg" alt=""></span><h3 data-content="how.steps.1.title">Get your digital pass</h3><p data-content="how.steps.1.description">Purchase your pass in minutes and receive it instantly on your phone.</p></article>
             <article><span class="step-number" data-content="how.steps.2.number">03</span><span class="step-icon" aria-hidden="true"><img data-image="how.steps.2.iconImage" src="ecopass-step-scan.svg" alt=""></span><h3 data-content="how.steps.2.title">Scan and explore</h3><p data-content="how.steps.2.description">Present your QR code for quick entry and enjoy your journey responsibly.</p></article>
           </div>
+          <div class="how-next"><p><strong>Less paperwork. More exploring.</strong><span>Your QR is issued only after payment is confirmed.</span></p><button type="button" class="button button-gold" id="how-start">Start my visit <svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#arrow"></use></svg></button></div>
         </div>
-        <div class="how-modal-visual" aria-hidden="true"><span class="how-modal-sun"></span><img data-image="how.phoneImage" src="ecopass-phone-cutout.png" alt=""></div>
+        <div class="how-modal-visual" aria-hidden="true"><span class="how-modal-sun"></span><img data-image="how.phoneImage" src="ecopass-phone-cutout.png" alt=""><span class="how-visual-label">YOUR ADVENTURE, IN YOUR POCKET</span></div>
       </div>
     </div>
   </dialog>

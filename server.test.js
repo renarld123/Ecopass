@@ -79,7 +79,10 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(html, /data-content="journey\.features\.0\.title"/);
   assert.doesNotMatch(html, /data-content="stories\.items\.0\.quote"/);
   assert.match(html, /data-content="support\.title"/);
-  assert.match(html, /data-link="support\.mapEmbedUrl"/);
+  assert.match(html, /id="resort-map"/);
+  assert.match(html, /id="resort-search"/);
+  assert.match(html, /data-resort-query="Resorts in Sipalay City Philippines"/);
+  assert.match(html, /this is not a complete official resort directory/);
   assert.match(html, /data-content="cta\.secondaryButton"/);
   assert.match(html, /data-content="footer\.copyright"/);
   assert.match(html, /data-content="footer\.contactLink"/);
