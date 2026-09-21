@@ -14,7 +14,7 @@
   const statusBadge = record => `<span class="badge ${record.paymentStatus==='PAID'?'paid':record.paymentStatus==='CHECKOUT_FAILED'?'failed':'pending'}">${escape(statusNames[record.paymentStatus]||record.paymentStatus)}</span>${testPayment(record)?'<span class="badge test">TEST</span>':unknownOnline(record)?'<span class="badge test">UNCLASSIFIED</span>':''}`;
   const initials = name => String(name||'?').trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase();
   const empty = (message, type='leaf') => `<div class="empty">${icon(type)}<span>${escape(message)}</span></div>`;
-  let data={visitors:[],booths:[],scans:[]}, page=1, view='overview', profileId='', confirmId='', verifiedId='', map, markers, draftMarker, picking=false, stream, cameraTimer, detector, cameraBusy=false, loading=false;
+  let data={visitors:[],booths:[],scans:[]}, page=1, view='overview', profileId='', confirmId='', verifiedId='', map, markers, draftMarker, stream, cameraTimer, detector, cameraBusy=false, loading=false;
   async function api(url, options={}) {
     const response=await fetch(url,{...options,headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});
     const result=await response.json().catch(()=>({}));
@@ -101,7 +101,14 @@
   function editBooth(id) {
     const b=data.booths.find(b=>b.id===id);if(!b)return;
     const form=$('#booth-form');for(const key of ['id','version','name','address','lat','lng','hours','contact','notes'])form.elements[key].value=b[key]??'';form.elements.active.checked=b.active;
-    $('#booth-form-title').textContent='Edit scanning booth';$('#booth-error').textContent='';showView('booths');if(map)map.setView([b.lat,b.lng],16);
+    clearDraftPin();$('#booth-form-title').textContent='Edit scanning booth';$('#booth-error').textContent='';showView('booths');if(map)map.setView([b.lat,b.lng],16);$('#map-help').textContent='Editing '+b.name+'. Click another spot to move its pin, then save to apply.';
+  }
+  function clearDraftPin(){if(draftMarker&&map)map.removeLayer(draftMarker);draftMarker=null;$('#pick-location').textContent='Choose a spot on the map';}
+  function selectBoothLocation(lat,lng){
+    const form=$('#booth-form');form.elements.lat.value=lat.toFixed(6);form.elements.lng.value=lng.toFixed(6);clearDraftPin();
+    draftMarker=L.circleMarker([lat,lng],{radius:11,color:'#8b641a',weight:3,fillColor:'#f5d686',fillOpacity:1}).addTo(map).bindTooltip('Selected location · not saved',{permanent:true,direction:'top',offset:[0,-12]});
+    $('#map-help').textContent='Pin selected. Enter the booth name and address, then choose Save booth location. Click elsewhere to reposition it.';
+    $('#booth-error').textContent='';$('#pick-location').textContent='Return to selected pin';
   }
   function renderBooths() {
     $('#booth-count').textContent=`${data.booths.length} locations`;
@@ -116,7 +123,8 @@
     const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
     tiles.on('tileerror',()=>$('#map-help').textContent='Some map tiles could not load. Coordinates and saved booth details are still available.');
     markers=L.featureGroup().addTo(map);drawMarkers();
-    map.on('click',event=>{if(!picking)return;const {lat,lng}=event.latlng;$('#booth-form').elements.lat.value=lat.toFixed(6);$('#booth-form').elements.lng.value=lng.toFixed(6);if(draftMarker)map.removeLayer(draftMarker);draftMarker=L.circleMarker([lat,lng],{radius:9,color:'#9d762c',fillColor:'#f5d686',fillOpacity:1}).addTo(map);picking=false;$('#pick-location').textContent='Pick a location on the map';$('#map-help').textContent='Location selected. Complete the booth details and save.';});
+    $('#map-help').textContent='Click any spot on the map to pin a booth location. Nothing changes until you save.';$('#pick-location').textContent='Choose a spot on the map';
+    map.on('click',event=>selectBoothLocation(event.latlng.lat,event.latlng.lng));
     if(data.booths.length)map.fitBounds(markers.getBounds(),{padding:[35,35],maxZoom:15});
   }
   function drawMarkers(){markers.clearLayers();data.booths.forEach((b,i)=>{const content=document.createElement('div');const title=document.createElement('strong');title.textContent=b.name;const address=document.createElement('p');address.textContent=b.address;const button=document.createElement('button');button.textContent='Edit booth';button.addEventListener('click',()=>editBooth(b.id));content.append(title,address,button);L.marker([b.lat,b.lng],{icon:L.divIcon({className:'booth-pin'+(b.active?'':' inactive'),html:`<span>${i+1}</span>`,iconSize:[29,29],iconAnchor:[14,29]})}).bindPopup(content).addTo(markers);});}
@@ -147,8 +155,8 @@
     if(target.dataset.usePass){$('#visitor-dialog').close();showView('scanner');$('#scan-code').value=target.dataset.usePass;verifyPass();}
   });
   $('#booth-form').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;$('#booth-error').textContent='';const form=event.target;const value=Object.fromEntries(new FormData(form));value.version=Number(value.version);value.active=form.elements.active.checked;try{const booth=await api('/api/admin/booths',{method:'POST',body:JSON.stringify(value)});await refresh();editBooth(booth.id);toast('Booth location saved.');}catch(error){$('#booth-error').textContent=error.message;}finally{button.disabled=false;}});
-  $('#new-booth').addEventListener('click',()=>{$('#booth-form').reset();$('#booth-form').elements.id.value='';$('#booth-form').elements.version.value='';$('#booth-form-title').textContent='Add a scanning booth';$('#booth-error').textContent='';if(draftMarker&&map){map.removeLayer(draftMarker);draftMarker=null;}});
-  $('#pick-location').addEventListener('click',()=>{initMap();if(!map)return;picking=!picking;$('#pick-location').textContent=picking?'Click the map to place this booth':'Pick a location on the map';$('#map-help').textContent=picking?'Click the exact scanning-booth location on the map.':'Select a booth pin to view its details.';if(picking)$('#booth-map').scrollIntoView({behavior:'smooth',block:'center'});});
+  $('#new-booth').addEventListener('click',()=>{$('#booth-form').reset();$('#booth-form').elements.id.value='';$('#booth-form').elements.version.value='';$('#booth-form-title').textContent='Add a scanning booth';$('#booth-error').textContent='';clearDraftPin();$('#pick-location').textContent='Choose a spot on the map';$('#map-help').textContent='Click any spot on the map to pin a new booth. Nothing changes until you save.';});
+  $('#pick-location').addEventListener('click',()=>{initMap();if(!map)return;if(draftMarker)map.panTo(draftMarker.getLatLng());$('#booth-map').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});$('#map-help').textContent='Click the exact scanning-booth location on the map, then complete the form and save.';});
   $('#fit-booths').addEventListener('click',()=>{if(map&&data.booths.length)map.fitBounds(markers.getBounds(),{padding:[35,35],maxZoom:15});else if(map)map.setView([9.75,122.40],12);});
   $('#confirm-collection').addEventListener('click',async event=>{const button=event.target;button.disabled=true;try{await api('/api/admin/registrations/'+encodeURIComponent(confirmId)+'/confirm-payment',{method:'POST'});$('#payment-dialog').close();toast('Collection recorded. The visitor’s pass is active.');await refresh();}catch(error){$('#confirm-error').textContent=error.message;}finally{button.disabled=false;}});
   $('#scan-form').addEventListener('submit',async event=>{event.preventDefault();event.submitter.disabled=true;try{await verifyPass();}finally{event.submitter.disabled=false;}});
