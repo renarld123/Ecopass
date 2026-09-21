@@ -143,6 +143,10 @@ test('server protects writes and persists authenticated content updates', async 
   });
   const base = `http://127.0.0.1:${server.address().port}`;
   const publicResponse = await fetch(`${base}/api/content`);
+  for (const route of ['/api/admin/operations','/api/admin/scan?code=ECP-20990101-ABCDEF12']) assert.equal((await fetch(base+route)).status,401);
+  for (const route of ['/data/registrations.json','/data/operations.json','/.env','/server.js','/operations.js']) assert.equal((await fetch(base+route)).status,404);
+  assert.equal((await fetch(base+'/api/admin/booths',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);
+  assert.equal((await fetch(base+'/api/admin/check-in',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);
   assert.equal(publicResponse.status, 200);
   const current = await publicResponse.json();
   const landingHtml = await (await fetch(`${base}/`)).text();

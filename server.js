@@ -10,6 +10,7 @@ const QRCode = require('qrcode');
 const { put: putBlob, get: getBlob, del: delBlob, BlobPreconditionFailedError } = require('@vercel/blob');
 const defaults = require('./site-defaults');
 const { renderLanding } = require('./landing-renderer');
+const { createOperations } = require('./operations');
 
 const ROOT = __dirname;
 const envFile = path.join(ROOT, '.env');
@@ -40,6 +41,7 @@ const SESSION_TTL = 8 * 60 * 60 * 1000;
 const loginAttempts = new Map();
 const registrationAttempts = new Map();
 let registrationWriteQueue = Promise.resolve();
+const operations = createOperations({useBlob:USE_BLOB,dataDir:DATA_DIR,readBlob,putBlob,ConflictError:BlobPreconditionFailedError,readRegistrations});
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -408,12 +410,19 @@ async function handler(req, res) {
     if (url.pathname === '/api/admin/logout' && req.method === 'POST') return json(res, 200, { ok: true }, { 'Set-Cookie': 'ecopass_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' });
     if (url.pathname.startsWith('/api/admin/') && (!authenticated(req) || !sameOrigin(req))) return json(res, 401, { error: 'Authentication required' });
     if (url.pathname === '/api/admin/registrations' && req.method === 'GET') return json(res, 200, await readRegistrations());
+    if (url.pathname === '/api/admin/operations' && req.method === 'GET') return json(res, 200, await operations.snapshot());
+    if (url.pathname === '/api/admin/booths' && req.method === 'POST') return json(res, 200, await operations.saveBooth(await jsonBody(req)));
+    if (url.pathname === '/api/admin/scan' && req.method === 'GET') return json(res, 200, await operations.lookup(url.searchParams.get('code')));
+    if (url.pathname === '/api/admin/check-in' && req.method === 'POST') return json(res, 200, await operations.checkIn(await jsonBody(req)));
     if (/^\/api\/admin\/registrations\/[^/]+\/confirm-payment$/.test(url.pathname) && req.method === 'POST') {
       const id = decodeURIComponent(url.pathname.split('/')[4]);
       const record = (await readRegistrations()).find(item => item.id === id);
       if (!record) return json(res, 404, { error: 'Registration not found' });
       if (!['Pay at Tourism Office (Cash)', 'Physical Payment'].includes(record.paymentMethod) || record.paymentStatus !== 'PAY_AT_OFFICE') return json(res, 409, { error: 'Only an unpaid tourism-office registration can be confirmed here.' });
-      const confirmed = await updateRegistration(id, current => ({ ...current, paymentStatus: 'PAID', paymentSource: 'tourism-office', status: 'ACTIVE', paidAt: new Date().toISOString() }));
+      const confirmed = await updateRegistration(id, current => {
+        if (current.paymentStatus !== 'PAY_AT_OFFICE') throw Object.assign(new Error('This payment was already updated. Refresh the dashboard.'), {status:409});
+        return {...current,paymentStatus:'PAID',paymentSource:'tourism-office',status:'ACTIVE',paidAt:new Date().toISOString()};
+      });
       return json(res, 200, publicPass(confirmed));
     }
     if (url.pathname === '/api/admin/content' && req.method === 'PUT') return json(res, 200, await writeContent(await jsonBody(req)));
@@ -454,9 +463,10 @@ async function handler(req, res) {
       res.writeHead(200, { 'Content-Type': stored.blob.contentType || 'application/octet-stream', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' });
       return Readable.fromWeb(stored.stream).pipe(res);
     }
-    const routes = { '/': 'ecopass.html', '/ecopass.html': 'ecopass.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
+    const routes = { '/': 'ecopass.html', '/ecopass.html': 'ecopass.html', '/admin': 'collections.html', '/admin/': 'collections.html', '/collections': 'collections.html' };
     const requested = routes[url.pathname] || url.pathname.slice(1);
-    if (!requested || requested.includes('..') || path.isAbsolute(requested)) return json(res, 404, { error: 'Not found' });
+    const publicScript = ['admin.js','landing.js','landing-motion.js','registration-design.js','collections.js'].includes(requested);
+    if (!/^[a-zA-Z0-9_-]+\.(html|css|png|jpg|jpeg|webp|gif|svg)$/.test(requested) && !publicScript) return json(res, 404, { error: 'Not found' });
     return serveFile(res, path.join(ROOT, requested));
   } catch (error) {
     const errorId = crypto.randomUUID();
