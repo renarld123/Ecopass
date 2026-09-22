@@ -79,6 +79,7 @@
     controller=new AbortController();const currentController=controller,timeout=setTimeout(()=>currentController.abort(),18000);
     try{
       const result=await requestRoute(point,[selected.lng,selected.lat],mode,currentController.signal);if(token!==sequence)return;route=result;drawRoute();
+      if(gps&&matchMedia('(max-width:720px)').matches)$('#visitor-map-frame').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'center'});
       $('#route-result').hidden=false;$('#route-time').textContent=R.time(result.duration);$('#route-distance').textContent=R.meters(result.distance);$('#route-travel-label').textContent=mode==='walk'?'Walking estimate':'Driving estimate';
       $('#map-route-summary').hidden=false;$('#map-route-summary').textContent=(mode==='walk'?'Walking':'Driving')+' route · '+R.time(result.duration)+' · '+R.meters(result.distance);
       $('#route-steps').innerHTML=result.steps.map((s,i)=>'<li><span>'+(i+1)+'</span><div>'+escape(s.text)+'<small>'+R.meters(s.distance)+'</small></div></li>').join('');
