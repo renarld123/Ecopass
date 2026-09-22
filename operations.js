@@ -68,6 +68,10 @@ function createOperations({ useBlob, dataDir, readBlob, putBlob, ConflictError, 
     return {visitor:visitor(record),reason:eligibility(record,today),today,checkIn:state.scans.find(scan=>scan.passId===id && scan.date===today)||null};
   }
   return {
+    async publicBooths() {
+      const state=await read();
+      return state.booths.filter(booth=>booth.active===true).map(({id,name,address,lat,lng,hours})=>({id,name,address,lat,lng,hours}));
+    },
     async snapshot() { const [records,state]=await Promise.all([readRegistrations(),read()]); return {visitors:records.map(visitor),...state,today:dayInManila(),updatedAt:new Date().toISOString()}; },
     lookup,
     async saveBooth(input) {

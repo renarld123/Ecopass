@@ -40,3 +40,15 @@ test('booth storage retries conditional conflicts without losing concurrent loca
   await ops.saveBooth({name:'New booth',address:'New location',lat:9.7,lng:122.4});
   assert.equal(value.booths.length,2);assert.equal(value.booths[0].id,'concurrent');
 });
+test('public map only exposes active booth locations and never reads tourist records',async t=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'ecopass-public-booth-test-'));
+  t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+  const ops=createOperations({useBlob:false,dataDir:dir,readRegistrations:async()=>{throw new Error('Public map must not read tourist records');}});
+  assert.deepEqual(await ops.publicBooths(),[]);
+  const first=await ops.saveBooth({name:'Public booth',address:'Public address',lat:9.75,lng:122.4,hours:'9 AM – 5 PM',contact:'private staff number',notes:'private staff instructions',active:true});
+  await ops.saveBooth({name:'Inactive booth',address:'Do not show',lat:9.76,lng:122.42,active:false});
+  const records=await ops.publicBooths();
+  assert.deepEqual(records,[{id:first.id,name:'Public booth',address:'Public address',lat:9.75,lng:122.4,hours:'9 AM – 5 PM'}]);
+  await ops.saveBooth({...first,name:'Renamed published booth'});
+  assert.equal((await ops.publicBooths())[0].name,'Renamed published booth');
+});
