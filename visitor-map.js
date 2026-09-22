@@ -103,14 +103,17 @@
     $('#visitor-map-frame').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'center'});
   }
   function pick(lat,lng){if(!picking||!selected)return;picking=false;section.classList.remove('is-picking');$('#route-pin-hint').hidden=true;calculate([lng,lat],false,sequence);}
-  async function init(){
-    if(started)return;started=true;
+  async function init(retry=false){
+    if(started&&!retry)return;started=true;$('#explore-retry').hidden=true;$('#explore-count').textContent='Loading published checkpoints…';
+    if(retry)$('#explore-booths').innerHTML='<p class="explore-empty">Reconnecting to EcoPass…</p>';
     try{
-      const response=await fetch('/api/booths',{headers:{Accept:'application/json'},signal:AbortSignal.timeout(12000)});if(!response.ok)throw new Error();const result=await response.json();if(!Array.isArray(result.booths))throw new Error();
+      const response=await fetch('/api/booths',{headers:{Accept:'application/json'},signal:AbortSignal.timeout(18000)});if(!response.ok)throw new Error();const result=await response.json();if(!Array.isArray(result.booths))throw new Error();
       booths=result.booths.filter(b=>typeof b.id==='string'&&typeof b.name==='string'&&typeof b.address==='string'&&R.validPoint([b.lng,b.lat]));$('#explore-count').textContent=booths.length+' published '+(booths.length===1?'checkpoint':'checkpoints');renderList();if(booths.length)choose(booths[0].id,false);
-    }catch{$('#explore-booths').innerHTML='<p class="explore-empty">Booth locations could not load. Please refresh or contact EcoPass support.</p>';status('Booth locations unavailable; no booth positions are assumed.');}
+      if(retry&&map){map.remove();map=null;markers=[];}
+    }catch{$('#explore-count').textContent='Connection interrupted';$('#explore-retry').hidden=false;$('#explore-booths').innerHTML='<p class="explore-empty">Booth locations could not load. Retry below or contact EcoPass support.</p>';status('Booth locations unavailable; no booth positions are assumed.');}
     await setMapMode('terrain');
   }
+  $('#explore-retry').addEventListener('click',()=>init(true));
   $('#explore-search').addEventListener('input',renderList);
   section.addEventListener('click',event=>{const b=event.target.closest('[data-visitor-booth]');if(b)choose(b.dataset.visitorBooth);});
   $('#explore-back').addEventListener('click',()=>{cancelRoute();$('#explore-detail').hidden=true;$('#explore-list-panel').hidden=false;$('#explore-search').focus();});
