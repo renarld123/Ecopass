@@ -13,7 +13,7 @@
   function cancelRoute(message=''){
     sequence++;controller?.abort();controller=null;stopWatch();clearDrawing();route=null;origin=null;fromGPS=false;picking=false;routeBusy=false;
     $('#route-result').hidden=true;$('#map-route-summary').hidden=true;$('#route-pin-hint').hidden=true;$('#route-cancel').hidden=true;$('#route-gps').disabled=!ready;$('#route-pin').disabled=!ready;
-    section.classList.remove('is-picking');routeStatus(message);
+    $('#explore-flat').disabled=mapBusy;section.classList.remove('is-picking');routeStatus(message);
   }
   function renderList(){
     const term=$('#explore-search').value.trim().toLowerCase(),filtered=booths.filter(b=>(b.name+' '+b.address).toLowerCase().includes(term));
@@ -43,7 +43,7 @@
     map.invalidateSize();mapMode='street';
   }
   async function setMapMode(next){
-    if(mapBusy||routeBusy)return;mapBusy=true;$('#explore-loading').hidden=false;$('#explore-flat').disabled=true;ready=false;
+    if(mapBusy||routeBusy)return;mapBusy=true;$('#explore-loading').hidden=false;$('#explore-flat').disabled=true;$('#explore-retry').disabled=true;ready=false;
     try{
       if(next==='terrain'){
         $('#visitor-map-2d').hidden=true;$('#visitor-map-3d').hidden=false;scene.update(booths.map(b=>({...b,active:true})));
@@ -53,7 +53,7 @@
       if(next==='terrain'){try{await street();ready=true;status('Using a lighter 2D map on this device. Directions work here too.');}catch{status('The map could not load. Please retry or check your connection.');}}
       else status('The map could not load. Please retry or check your connection.');
     }finally{
-      mapBusy=false;$('#explore-loading').hidden=true;$('#explore-flat').disabled=false;$('#explore-flat').textContent=ready?(mapMode==='terrain'?'2D view':'3D view'):'Retry map';
+      mapBusy=false;$('#explore-loading').hidden=true;$('#explore-flat').disabled=false;$('#explore-retry').disabled=false;$('#explore-flat').textContent=ready?(mapMode==='terrain'?'2D view':'3D view'):'Retry map';
       $('#explore-recenter').disabled=!ready;$('#route-gps').disabled=!ready||routeBusy;$('#route-pin').disabled=!ready||routeBusy;
     }
     if(ready){if(route)drawRoute();else fit();}
@@ -75,7 +75,7 @@
     },()=>{if(token!==sequence)return;stopWatch();routeStatus('Location updates stopped. Your route remains visible; tap Get directions to locate again.');},{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
   }
   async function calculate(point,gps,token){
-    if(token!==sequence||!selected)return;origin=point;fromGPS=gps;routeBusy=true;$('#route-gps').disabled=true;$('#route-pin').disabled=true;$('#route-cancel').hidden=false;routeStatus('Finding your '+(mode==='walk'?'walking':'driving')+' route…');
+    if(token!==sequence||!selected)return;origin=point;fromGPS=gps;routeBusy=true;$('#route-gps').disabled=true;$('#route-pin').disabled=true;$('#explore-flat').disabled=true;$('#route-cancel').hidden=false;routeStatus('Finding your '+(mode==='walk'?'walking':'driving')+' route…');
     controller=new AbortController();const currentController=controller,timeout=setTimeout(()=>currentController.abort(),18000);
     try{
       const result=await requestRoute(point,[selected.lng,selected.lat],mode,currentController.signal);if(token!==sequence)return;route=result;drawRoute();
@@ -85,17 +85,17 @@
       const gaps=result.startGap>60||result.endGap>60?' The mapped route starts or ends on the nearest reachable road, not exactly at the pin.':'';
       routeStatus((gps?'Route ready. Your blue dot updates while this page is open.':'Route ready from your chosen starting point.')+gaps);beginWatch(token);
     }catch(error){if(token!==sequence)return;route=null;clearDrawing();$('#route-result').hidden=true;routeStatus(currentController.signal.aborted?'Route request timed out. Please try again.':error.message);}
-    finally{clearTimeout(timeout);if(token===sequence){routeBusy=false;$('#route-gps').disabled=!ready;$('#route-pin').disabled=!ready;}}
+    finally{clearTimeout(timeout);if(token===sequence){routeBusy=false;$('#route-gps').disabled=!ready;$('#route-pin').disabled=!ready;$('#explore-flat').disabled=mapBusy;}}
   }
   function locate(){
     if(!ready||!selected)return;cancelRoute();const token=sequence;$('#route-cancel').hidden=false;
     if(!navigator.geolocation){routeStatus('Location is not supported here. Choose a starting point on the map instead.');return;}
-    routeBusy=true;$('#route-gps').disabled=true;$('#route-pin').disabled=true;routeStatus('Allow location access in your browser to find your route.');
+    routeBusy=true;$('#route-gps').disabled=true;$('#route-pin').disabled=true;$('#explore-flat').disabled=true;routeStatus('Allow location access in your browser to find your route.');
     navigator.geolocation.getCurrentPosition(position=>{
       if(token!==sequence)return;
-      if(position.coords.accuracy>1000){routeBusy=false;$('#route-gps').disabled=false;$('#route-pin').disabled=false;routeStatus('Your location is too approximate. Choose a starting point on the map for a more useful route.');return;}
+      if(position.coords.accuracy>1000){routeBusy=false;$('#route-gps').disabled=false;$('#route-pin').disabled=false;$('#explore-flat').disabled=false;routeStatus('Your location is too approximate. Choose a starting point on the map for a more useful route.');return;}
       calculate([position.coords.longitude,position.coords.latitude],true,token);
-    },error=>{if(token!==sequence)return;routeBusy=false;$('#route-gps').disabled=false;$('#route-pin').disabled=false;routeStatus(error.code===1?'Location permission was denied. Allow it in browser settings, or choose a starting point on the map.':'Your location could not be found. Try again outdoors, or choose a starting point on the map.');},{enableHighAccuracy:true,timeout:15000,maximumAge:10000});
+    },error=>{if(token!==sequence)return;routeBusy=false;$('#route-gps').disabled=false;$('#route-pin').disabled=false;$('#explore-flat').disabled=false;routeStatus(error.code===1?'Location permission was denied. Allow it in browser settings, or choose a starting point on the map.':'Your location could not be found. Try again outdoors, or choose a starting point on the map.');},{enableHighAccuracy:true,timeout:15000,maximumAge:10000});
   }
   function startPick(){
     if(!ready||!selected)return;cancelRoute();picking=true;section.classList.add('is-picking');$('#route-pin-hint').hidden=false;$('#route-cancel').hidden=false;
