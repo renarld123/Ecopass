@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="registration-design.css">
   <link rel="stylesheet" href="/visitor-map.css">
   <script src="/booth-map-scene.js" defer></script>
+  <script src="/visitor-routing.js" defer></script>
   <script src="/visitor-map.js" defer></script>
   <script src="landing.js" defer></script>
   <script src="landing-motion.js" defer></script>
@@ -96,17 +97,49 @@
       </div>
     </section>
     <section class="visitor-explorer" id="explore-map" aria-labelledby="explore-title">
-      <div class="explore-heading"><div><span class="explore-kicker"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg> YOUR SIPALAY ADVENTURE STARTS HERE</span><h2 id="explore-title">Find your way.<br><em>Make yourself at home.</em></h2><p>Find an EcoPass scanning booth, plan your stop, and spend more time exploring.</p></div><div class="explore-stamp"><img src="/booth-kiosk.svg" alt=""><div><strong>Your first friendly stop</strong><span>Bring your confirmed EcoPass QR.<br>Our booth team will help you check in.</span></div></div></div>
-      <div class="explore-toolbar"><div class="explore-views" role="group" aria-label="Visitor map view"><button id="explore-3d" aria-pressed="true" type="button"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#layers"></use></svg>3D terrain</button><button id="explore-2d" aria-pressed="false" type="button"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg>Street view</button></div><span class="explore-count" id="explore-count">Discover our booth network</span><button id="explore-fit" type="button"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#focus"></use></svg>Show all booths</button><button id="explore-reset" type="button"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#refresh"></use></svg>Reset angle</button></div>
-      <div class="explore-stage">
-        <div id="visitor-map-3d" class="visitor-map-canvas" aria-label="3D map of EcoPass scanning booths"></div>
-        <div id="visitor-map-2d" class="visitor-map-canvas" aria-label="Street map of EcoPass scanning booths" hidden></div>
-        <div class="explore-loading" id="explore-loading"><img src="/booth-kiosk.svg" alt=""><strong>Finding your next stop…</strong><span>Preparing your view of Sipalay</span></div>
-        <aside class="explore-directory" aria-label="Find a scanning booth"><div class="explore-directory-heading"><span class="explore-kicker">ECOPASS CHECKPOINTS</span><h3>A warm welcome awaits.</h3><p>Choose a booth to see it on the map.</p></div><label class="explore-search"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg><input id="explore-search" type="search" placeholder="Search booth or location…" aria-label="Search scanning booths" maxlength="120"></label><div id="explore-booths" class="explore-booths"><p class="explore-empty">Loading published booth locations…</p></div><div class="explore-directory-foot"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#shield"></use></svg>Only booths published by EcoPass are shown.</div></aside>
+      <div class="explore-heading">
+        <div><span class="explore-kicker"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg> A FRIENDLY START TO YOUR SIPALAY ADVENTURE</span><h2 id="explore-title">Your next stop.<br><em>Right here.</em></h2><p>Find your EcoPass booth and follow your route, all in one place.</p></div>
+        <div class="explore-stamp"><img src="/booth-kiosk.svg" alt=""><div><strong>A little guidance.<br>A lot to explore.</strong><span>Your confirmed QR is all you need for check-in.</span></div></div>
       </div>
-      <div class="explore-footer"><p id="explore-status" role="status">Explore in 3D. Select a kiosk to find your check-in point.</p><a href="https://www.google.com/maps/search/?api=1&amp;query=Sipalay+City+Negros+Occidental" target="_blank" rel="noopener">Open Sipalay in Maps <svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#external"></use></svg></a></div>
-      <div class="explore-stays"><div><span class="explore-kicker">STAY A LITTLE LONGER</span><h3>Find your little paradise.</h3><p>Discover beaches and places to stay on Google Maps.</p></div><div class="explore-stay-links"><a href="https://www.google.com/maps/search/?api=1&amp;query=Resorts+in+Sipalay+City+Philippines" target="_blank" rel="noopener">All resorts ↗</a><a href="https://www.google.com/maps/search/?api=1&amp;query=Resorts+Sugar+Beach+Sipalay+Philippines" target="_blank" rel="noopener">Sugar Beach ↗</a><a href="https://www.google.com/maps/search/?api=1&amp;query=Resorts+Punta+Ballo+Sipalay+Philippines" target="_blank" rel="noopener">Punta Ballo ↗</a><a href="https://www.google.com/maps/search/?api=1&amp;query=Resorts+Campomanes+Bay+Sipalay+Philippines" target="_blank" rel="noopener">Campomanes Bay ↗</a></div></div>
-      <noscript><p class="explore-empty">Enable JavaScript to explore booth locations, or use the Maps link above for Sipalay directions.</p></noscript>
+      <div class="explore-stage">
+        <aside class="explore-directory" aria-label="Booth details and navigation">
+          <div id="explore-list-panel"><div class="explore-directory-heading"><span class="explore-kicker">FIND YOUR CHECKPOINT</span><h3>A warm welcome awaits.</h3><p id="explore-count">Loading published checkpoints…</p></div>
+            <label class="explore-search"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#search"></use></svg><input id="explore-search" type="search" placeholder="Search booth or location…" aria-label="Search scanning booths" maxlength="120"></label>
+            <div id="explore-booths" class="explore-booths"><p class="explore-empty">Loading published booth locations…</p></div>
+          </div>
+          <div id="explore-detail" hidden>
+            <button id="explore-back" class="explore-back" type="button"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#arrow-left"></use></svg>All checkpoints</button>
+            <div class="booth-identity"><img src="/booth-kiosk.svg" alt=""><div><span class="explore-kicker">ECOPASS CHECKPOINT</span><strong id="booth-number">01</strong><span class="booth-published"><i></i>Published location</span></div></div>
+            <div class="booth-copy"><h3 id="booth-name"></h3><p><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg><span id="booth-address"></span></p><p><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#clock"></use></svg><span id="booth-hours"></span></p></div>
+            <div class="route-planner">
+              <div class="route-heading"><strong>Let's get you there</strong><span>STAY ON THIS MAP</span></div>
+              <div id="route-mode" class="route-modes" role="group" aria-label="Travel mode"><button type="button" data-route-mode="walk" aria-pressed="true"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#walk"></use></svg>Walk</button><button type="button" data-route-mode="drive" aria-pressed="false"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#car"></use></svg>Drive</button></div>
+              <p class="route-privacy">Directions share your starting point with <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener">FOSSGIS routing</a>, which logs route requests. EcoPass does not save your location.</p>
+              <button id="route-gps" class="route-primary" type="button" disabled><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#navigation"></use></svg><span>Get directions<small>From my current location</small></span><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#arrow"></use></svg></button>
+              <button id="route-pin" class="route-secondary" type="button" disabled><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg>Choose a starting point on the map</button>
+              <p id="route-status" role="status"></p><span id="route-live" class="route-live" hidden></span>
+              <div id="route-result" hidden>
+                <div class="route-summary"><div><strong id="route-time"></strong><span id="route-travel-label"></span></div><div><strong id="route-distance"></strong><span>Mapped distance</span></div><button type="button" id="route-fit" aria-label="Show entire route" title="Show entire route"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#focus"></use></svg></button></div>
+                <details class="route-instructions"><summary>Step-by-step directions</summary><ol id="route-steps"></ol></details>
+                <p class="route-caution">Estimates only, without live traffic. Follow local signs and conditions. Tap Get directions again if you leave the route. Please stop safely before using your phone.</p>
+              </div>
+              <button id="route-cancel" class="route-cancel" type="button" hidden>Stop navigation</button>
+            </div>
+          </div>
+          <div class="explore-directory-foot"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#shield"></use></svg><span>Bring your confirmed EcoPass QR.<br>Our booth team will welcome you.</span></div>
+        </aside>
+        <div class="visitor-map-frame" id="visitor-map-frame">
+          <div id="visitor-map-3d" class="visitor-map-canvas" aria-label="3D map of EcoPass scanning booths"></div>
+          <div id="visitor-map-2d" class="visitor-map-canvas" aria-label="2D map of EcoPass scanning booths" hidden></div>
+          <div class="map-caption"><span class="map-caption-dot"></span>SIPALAY CITY<span>Explore your way</span></div>
+          <p id="map-route-summary" class="map-route-summary" hidden></p>
+          <div class="map-small-controls"><button id="explore-recenter" type="button" aria-label="Recenter map" title="Recenter map" disabled><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#focus"></use></svg></button><button id="explore-flat" type="button">2D view</button></div>
+          <p id="route-pin-hint" class="route-pin-hint" hidden><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg>Tap a road to set your starting point</p>
+          <div class="explore-loading" id="explore-loading"><img src="/booth-kiosk.svg" alt=""><strong>A little closer to adventure…</strong><span>Preparing your view of Sipalay</span></div>
+        </div>
+      </div>
+      <div class="explore-footer"><p id="explore-status" role="status">Select a checkpoint and find your way, without leaving EcoPass.</p><span>Routes: <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener">OSRM / FOSSGIS</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Fix the map</a></span></div>
+      <noscript><p class="explore-empty">Enable JavaScript to explore booth locations and plan directions.</p></noscript>
     </section>
     <section class="cta" id="cta">
       <div class="cta-inner">

@@ -466,7 +466,7 @@ async function handler(req, res) {
     }
     const routes = { '/': 'ecopass.html', '/ecopass.html': 'ecopass.html', '/admin': 'collections.html', '/admin/': 'collections.html', '/collections': 'collections.html' };
     const requested = routes[url.pathname] || url.pathname.slice(1);
-    const publicScript = ['admin.js','landing.js','landing-motion.js','registration-design.js','collections.js','booth-map-scene.js','visitor-map.js'].includes(requested);
+    const publicScript = ['admin.js','landing.js','landing-motion.js','registration-design.js','collections.js','booth-map-scene.js','visitor-routing.js','visitor-map.js'].includes(requested);
     if (!/^[a-zA-Z0-9_-]+\.(html|css|png|jpg|jpeg|webp|gif|svg)$/.test(requested) && !publicScript) return json(res, 404, { error: 'Not found' });
     return serveFile(res, path.join(ROOT, requested));
   } catch (error) {

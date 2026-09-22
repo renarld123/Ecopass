@@ -81,7 +81,12 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(html, /data-content="support\.title"/);
   assert.match(html, /id="visitor-map-3d"/);
   assert.match(html, /id="explore-search"/);
-  assert.match(html, /id="explore-3d" aria-pressed="true"/);
+  assert.doesNotMatch(html, /explore-toolbar|id="explore-3d"/);
+  assert.match(html, /id="route-gps"/);
+  assert.match(html, /id="route-result"/);
+  assert.match(html, /visitor-routing\.js/);
+  const mapSection = html.split('id="explore-map"')[1].split('<section class="cta"')[0];
+  assert.doesNotMatch(mapSection, /google\.com\/maps/);
   assert.match(html, /visitor-map\.js/);
   assert.doesNotMatch(html, /id="resort-map"/);
   assert.match(html, /data-content="cta\.secondaryButton"/);
@@ -151,6 +156,7 @@ test('server protects writes and persists authenticated content updates', async 
   for(const booth of publicBoothData.booths)assert.deepEqual(Object.keys(booth).sort(),['address','hours','id','lat','lng','name']);
   assert.equal((await fetch(base+'/api/booths',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,404);
   assert.equal((await fetch(base+'/visitor-map.js')).status,200);
+  assert.equal((await fetch(base+'/visitor-routing.js')).status,200);
   for (const route of ['/api/admin/operations','/api/admin/scan?code=ECP-20990101-ABCDEF12']) assert.equal((await fetch(base+route)).status,401);
   for (const route of ['/data/registrations.json','/data/operations.json','/.env','/server.js','/operations.js']) assert.equal((await fetch(base+route)).status,404);
   assert.equal((await fetch(base+'/api/admin/booths',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);

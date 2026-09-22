@@ -26,6 +26,16 @@ Run this behind HTTPS and persist both `data/` and `uploads/` on durable storage
 
 Run the automated checks with `npm test`.
 
+## Visitor booth map and directions
+
+The landing-page map reads only published active booths from `GET /api/booths`. Its default MapLibre terrain view has a Leaflet 2D fallback. The public map does not edit booth locations or expose staff notes, contacts, or tourist records.
+
+Visitors can request walking/driving directions from their browser location or select a starting point on the map. Routes, estimates, and steps stay inside EcoPass. No Google Maps redirect is used. Location permission is requested only after pressing **Get directions**; the starting point is sent directly to the [FOSSGIS OSRM service](https://routing.openstreetmap.de/about.html). The UI discloses that this provider logs route requests. EcoPass keeps coordinates only in browser memory, not in application storage. Cancel/booth changes clear the route and tracking; hiding the tab pauses an active GPS watch.
+
+Routing requests are user-initiated and spaced by at least 1.5 seconds per browser client. There is no automatic rerouting or live traffic; visitors request a fresh route if they leave it. This community routing service has fair-use limits and no availability guarantee. Before high-volume use, replace the provider in `visitor-routing.js` with an appropriately provisioned service and update the privacy disclosure. Keep OSM/FOSSGIS attribution and the Fix the map link. Unavailable or disconnected routes show an error instead of a fabricated straight-line road route.
+
+The routing tests use synthetic positions, a fake provider, and mocked browser geolocation, including cancellation races and denied/inaccurate GPS. UI smoke tests should use a chosen public road point, not a tester's actual location unless they explicitly consent to sharing it with the routing provider.
+
 ## Payment logo credits
 
 Payment marks are used only to identify available payment methods; their owners do not endorse EcoPass. The [GCash logo](https://commons.wikimedia.org/wiki/File:GCash_logo.svg), [Maya logo](https://commons.wikimedia.org/wiki/File:Maya_logo.svg), [Mastercard symbol](https://commons.wikimedia.org/wiki/File:Mastercard_2019_logo.svg), and [Visa logo](https://commons.wikimedia.org/wiki/File:Visa_Inc._logo_%282021%E2%80%93present%29.svg) are displayed without alteration. The Maya logo is credited to Maya Bank, Inc. and PayMaya Philippines, Inc. under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
