@@ -103,6 +103,14 @@
   .trip-ticket-facts { margin-block:12px; }
   .trip-ticket-total { padding-top:12px; }
 }
+/* A solid, reserved header keeps the close control away from scrolling inputs. */
+.pass-modal .registration-topbar { position:sticky; z-index:6; top:-28px; display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin:-28px -34px 22px; padding:20px 34px 30px; background:#fffefa; border-bottom:1px solid #edf0e7; }
+.pass-modal .registration-main .registration-topbar .pass-progress { order:0; flex:1; width:auto; max-width:370px; margin:0; }
+.pass-modal .registration-topbar .pass-modal-close { position:static; order:1; flex:0 0 36px; margin:0; float:none; background:#fff; }
+.pass-modal[data-current-step="3"] .registration-topbar { top:-20px; margin:-20px -28px 16px; padding:18px 28px 29px; }
+@media(max-width:820px) { .pass-modal .registration-topbar,.pass-modal[data-current-step="3"] .registration-topbar { top:0; margin:-25px -25px 22px; padding:18px 25px 29px; gap:20px; } }
+@media(max-width:480px) { .pass-modal .registration-topbar,.pass-modal[data-current-step="3"] .registration-topbar { margin:-23px -20px 20px; padding:16px 20px 29px; } }
+@media(min-width:821px) and (max-height:570px) { .pass-modal .registration-topbar,.pass-modal[data-current-step="3"] .registration-topbar { top:0; } }
 @media(max-width:820px) {
   .pass-modal { padding:12px; }
   .pass-modal .pass-modal-card { width:min(620px,100%); max-height:calc(100dvh - 24px); overflow-y:auto; border-radius:24px; }

@@ -1,0 +1,40 @@
+/* A bright workspace entry; scoped so the operations dashboard is unchanged. */
+.signin { min-height:100dvh; max-width:1400px; margin:auto; padding:40px clamp(24px,5vw,76px); display:grid; grid-template-columns:minmax(0,1.2fr) minmax(340px,.85fr); gap:clamp(30px,5vw,80px); align-items:center; }
+.signin .signin-card { grid-column:2; grid-row:1; width:100%; max-width:450px; margin:0; padding:32px; background:#fff; border:1px solid #dfe9df; border-radius:25px; box-shadow:0 20px 60px #244c3210; }
+.signin .brand { margin:0 0 25px; }
+.signin .brand-logo { width:150px; height:78px; }
+.signin .eyebrow { color:#607b67; font-size:9px; letter-spacing:1.5px; }
+.signin h1 { font-size:38px; margin:10px 0 12px; color:#183f33; }
+.signin .signin-card>p { font-size:13px; color:#738175; line-height:1.7; }
+.signin form { margin:25px 0 20px; }
+.signin form label { font-size:12px; color:#355747; margin-bottom:9px; }
+.signin-password { display:flex; align-items:center; gap:10px; border:1px solid #cadbcb; background:#fbfcf8; border-radius:12px; padding:0 12px; }
+.signin-password>.icon { color:#709580; width:18px; height:18px; }
+.signin-password input { margin:0; border:0; background:transparent; min-width:0; height:51px; padding:12px 0; outline:0; }
+.signin-password:focus-within { border-color:#267253; box-shadow:0 0 0 3px #28785314; }
+.signin .signin-password button { width:auto; flex:none; background:transparent; color:#176048; border:0; padding:10px 2px; min-width:40px; font-size:11px; font-weight:700; }
+.signin .signin-access-note { margin:9px 0 20px; font-size:10px; color:#788574; }
+.signin .signin-submit { min-height:49px; justify-content:space-between; border-radius:12px; background:linear-gradient(115deg,#11765a,#07583e); font-size:13px; }
+.signin .signin-submit:disabled { opacity:.7; cursor:wait; }
+.signin #login-error { color:#a1392b; font-size:12px; line-height:1.6; margin:12px 0 0; }
+.signin #login-error:empty { display:none; }
+.signin .signin-back { display:inline-flex; align-items:center; gap:8px; color:#53775f; text-decoration:none; font-size:12px; }
+.signin-back .icon { width:16px; height:16px; transform:rotate(180deg); }
+.signin .signin-art { grid-column:1; grid-row:1; display:block; position:relative; overflow:hidden; isolation:isolate; height:auto; max-height:none; padding:38px 32px 24px; border:1px solid #dce8d7; border-radius:28px; background:linear-gradient(145deg,#eef5e8,#f8faf3 65%,#e6f0e9); color:#214f3c; }
+.signin-art h2 { margin:20px 0 12px; font-size:clamp(30px,3.3vw,47px); line-height:1.12; letter-spacing:-1.2px; }
+.signin-art h2 em { color:#6c9469; font-style:normal; }
+.signin-art>p { max-width:340px; font-size:13px; color:#71846e; line-height:1.7; }
+.signin .signin-scene { position:relative; display:grid; place-items:center; height:225px; margin:10px -32px 20px; background:url('/travel-landscape.svg') center/cover no-repeat; }
+.signin-scene>img { width:125px; height:138px; filter:drop-shadow(0 14px 9px #345e4326); transform:translateY(-8px); }
+.signin .signin-scene-label { position:absolute; bottom:12px; right:28px; display:flex; align-items:center; gap:6px; padding:10px 13px; border:1px solid #dee7d6; border-radius:10px; background:#fffffff0; box-shadow:0 6px 20px #345e4310; color:#356347; font:600 11px 'DM Sans',sans-serif; }
+.signin-scene-label .icon { width:15px; height:15px; stroke-width:1.7; }
+.signin-features { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+.signin-features>div { padding:16px 12px; border:1px solid #dbe6d5; border-radius:15px; background:#ffffffb5; }
+.signin-features .icon { display:block; width:24px; height:24px; margin-bottom:9px; color:#4d8461; stroke-width:1.5; }
+.signin-features strong { display:block; font-size:12px; color:#34563e; }
+.signin-features small { display:block; margin-top:5px; font-size:10px; line-height:1.6; color:#788974; }
+.signin .signin-art-footer { display:flex; align-items:center; gap:7px; margin:20px 0 0; font-size:10px; color:#71846b; }
+.signin-art-footer .icon { width:16px; height:16px; stroke-width:1.7; }
+@media(max-width:850px) { .signin { grid-template-columns:1fr; padding:30px 20px; gap:25px; } .signin .signin-card { grid-column:1; grid-row:1; justify-self:center; } .signin .signin-art { grid-column:1; grid-row:2; max-width:450px; width:100%; justify-self:center; padding-top:25px; } .signin-art h2 { font-size:32px; } .signin .signin-scene { height:180px; } }
+@media(max-width:420px) { .signin { padding:20px 14px; } .signin .signin-card { padding:25px 22px; } .signin h1 { font-size:34px; } .signin .signin-art { padding-inline:22px; } .signin .signin-scene { margin-inline:-22px; } }
+@media(prefers-reduced-motion:no-preference) { .signin-card { animation:signinArrive .45s ease-out both; } .signin-art { animation:signinArrive .55s .08s ease-out both; } @keyframes signinArrive { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } } }
