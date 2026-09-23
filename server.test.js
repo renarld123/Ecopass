@@ -79,6 +79,9 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(html, /data-content="journey\.features\.0\.title"/);
   assert.doesNotMatch(html, /data-content="stories\.items\.0\.quote"/);
   assert.match(html, /data-content="support\.title"/);
+  assert.ok(html.indexOf('id="support"') > html.indexOf('id="explore-map"'), 'Support must follow the map');
+  assert.ok(html.indexOf('id="support"') < html.indexOf('id="cta"'), 'Support must precede the final CTA');
+  assert.match(html, /class="support-find-booth" href="#explore-map"/);
   assert.match(html, /id="visitor-map-3d"/);
   assert.match(html, /id="explore-search"/);
   assert.doesNotMatch(html, /explore-toolbar|id="explore-3d"/);

@@ -138,6 +138,42 @@ dialog[data-closing]::backdrop { animation:backdropExit .15s ease-in both; }
   .hero-visual { min-height:340px; }
   .hero-frame { top:0; bottom:24px; }
 }
+/* Support follows the booth map: a compact welcome panel and clear contact cards. */
+.support.support-redesign{padding:12px 0 74px;background:#f4f7ef;scroll-margin-top:24px}
+.support-redesign .support-shell{width:min(1440px,calc(100% - 64px));display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.5fr);gap:24px;align-items:stretch}
+.support-redesign .support-heading{position:relative;overflow:clip;text-align:left;border-radius:25px;padding:34px 36px;color:#fffdf0;background:radial-gradient(ellipse at 0 0,#287a54,transparent 70%),#084c35;display:flex;flex-direction:column;align-items:flex-start;isolation:isolate}
+.support-redesign .support-heading::after{content:'';position:absolute;width:280px;height:280px;border:1px solid #d4e9bd19;box-shadow:0 0 0 34px #d4e9bd08,0 0 0 70px #d4e9bd05;border-radius:50%;right:-140px;bottom:-170px;z-index:-1;pointer-events:none}
+.support-intro-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;border:1px solid #c3debd40;background:#b9d99d15;color:#ffd267;margin-bottom:25px}
+.support-intro-mark .ui-icon{width:26px;height:26px}
+.support-redesign .support-heading>span{color:#e3bd61;font-size:9px;letter-spacing:1.8px;margin-bottom:12px}
+.support-redesign .support-heading h2{color:#fffdf0;font:600 clamp(35px,3vw,48px)/1.05 'Outfit',sans-serif;letter-spacing:-1px;margin:0 0 15px}
+.support-redesign .support-heading p{font-size:13px;line-height:1.8;color:#c9dccb;margin:0;max-width:370px}
+.support-find-booth{display:inline-flex;gap:20px;align-items:center;margin-top:26px;padding:12px 17px;border:1px solid #ccdca350;border-radius:11px;color:#fffce9;background:#e5edc70b;font-size:12px;font-weight:600;text-decoration:none;transition:background .2s,border-color .2s}
+.support-find-booth:hover{background:#e5edc71c;border-color:#d4dea7}
+.support-find-booth .ui-icon{width:17px;height:17px}
+.support-intro-note{display:flex;align-items:center;gap:8px;padding-top:25px;margin-top:auto;font-size:10px;color:#a8c4ad}
+.support-intro-note .ui-icon{width:16px;height:16px;color:#dac269}
+.support-redesign .support-contacts{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:0}
+.support-redesign .support-contacts>a{position:relative;align-items:flex-start;justify-content:flex-start;min-height:185px;padding:23px 26px;background:#fffefa;border:1px solid #dfe7d7;border-radius:21px;text-align:left;box-shadow:0 4px 12px #254a2b03}
+.support-redesign .support-contacts>a:hover{background:#fffefb;border-color:#b4cba7;box-shadow:0 13px 25px #254a2b0d;transform:translateY(-3px)}
+.support-redesign .support-contacts>a:focus-visible,.support-find-booth:focus-visible{outline:3px solid #d8a931;outline-offset:4px}
+.support-redesign .support-contacts i{width:44px;height:44px;border-radius:13px;margin:0 0 14px;background:#edf4e6;box-shadow:none;border:1px solid #e1ead7}
+.support-redesign .support-contacts i svg{width:23px;height:23px;stroke-width:1.8}
+.support-redesign .support-contacts>a:nth-child(2) i{background:#fff3d6;border-color:#f0e5c3;color:#957728}
+.support-redesign .support-contacts>a:nth-child(3) i{background:#eaf1fa;border-color:#dbe5f3;color:#3467a2}
+.support-redesign .support-contacts>a:nth-child(4) i{background:#eef0f9;border-color:#dfe2f2;color:#616ca3}
+.support-redesign .support-contacts strong{font-size:19px;font-weight:600;margin:0 0 6px;color:#234f3b}
+.support-redesign .support-contacts span{font-size:12px;color:#78836e;line-height:1.6}
+.support-card-action{display:flex;align-items:center;justify-content:space-between;width:100%;font-size:10px;font-weight:600;font-style:normal;color:#537148;border-top:1px solid #edf0e6;padding-top:13px;margin-top:17px}
+.support-card-action .ui-icon{width:15px;height:15px;transition:transform .2s}
+.support-redesign .support-contacts>a:hover .support-card-action .ui-icon{transform:translateX(3px)}
+.support-redesign .support-address{grid-column:1/-1;justify-content:flex-start;gap:10px;text-align:left;padding:4px 8px 0;border:0;font-size:12px;font-weight:500;color:#6d8067}
+.support-location-label{font-size:8px;font-weight:700;letter-spacing:1.5px;color:#939b79;margin-right:auto}
+.support-redesign .support-address i{width:20px;height:20px;flex-basis:20px}
+.support-redesign .support-address svg{width:18px;height:18px}
+@media(max-width:900px){.support-redesign .support-shell{grid-template-columns:minmax(240px,.8fr) minmax(0,1.3fr);width:calc(100% - 36px);gap:16px}.support-redesign .support-heading{padding:28px 25px}.support-redesign .support-contacts{gap:12px}.support-redesign .support-contacts>a{padding:20px}.support-redesign .support-contacts strong{font-size:17px}}
+@media(max-width:650px){.support.support-redesign{padding:0 0 54px}.support-redesign .support-shell{display:grid;grid-template-columns:minmax(0,1fr);width:calc(100% - 28px);gap:16px}.support-redesign .support-heading{padding:27px;border-radius:22px}.support-intro-mark{position:absolute;right:27px;top:27px;width:43px;height:43px;margin:0}.support-redesign .support-heading h2{font-size:38px;padding-right:50px}.support-redesign .support-heading>span{max-width:calc(100% - 65px)}.support-redesign .support-heading p{font-size:13px}.support-find-booth{margin-top:19px}.support-intro-note{padding-top:22px}.support-redesign .support-contacts>a{padding:20px 17px;min-height:195px;border-radius:17px}.support-redesign .support-contacts span{font-size:11px}.support-card-action{font-size:9px;gap:6px}.support-redesign .support-address{flex-wrap:wrap;padding:6px 10px 0;gap:8px;font-size:11px;line-height:1.6}.support-location-label{flex-basis:100%;margin-bottom:2px}.support-redesign .support-address>span:last-child{flex:1;min-width:0}}
+@media(max-width:360px){.support-redesign .support-contacts{grid-template-columns:1fr}.support-redesign .support-contacts>a{min-height:0}.support-redesign .support-heading{padding:24px}}
 @media(prefers-reduced-motion:reduce) {
   html { scroll-behavior:auto; }
   *,*::before,*::after { animation:none!important; transition:none!important; }
