@@ -227,12 +227,25 @@
 @keyframes passTicketReveal { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
 @keyframes passSparkle { from { opacity:0; scale:.3; } to { opacity:1; scale:1; } }
 
-/* Keep the postcard's proportions: scroll short sidebars, never squash photos. */
+/* One fixed summary panel, not a second independently scrolling column. */
 @media(min-width:821px) {
-  .registration-side { max-height:calc(100dvh - 50px); overflow-y:auto; scrollbar-width:thin; scrollbar-color:#90b69a transparent; }
-  .registration-side>* { flex-shrink:0; }
-  .registration-side .trip-postcard { flex:0 0 auto; width:100%; height:auto; min-height:0; max-height:none; aspect-ratio:4/3; }
+  .registration-side { height:min(740px,calc(100dvh - 50px)); max-height:none; min-height:0; overflow:visible; display:grid; grid-template-rows:auto minmax(90px,1fr) auto auto; gap:14px; padding:24px; }
+  .registration-side .trip-intro h2 { font-size:30px; margin:12px 0 8px; }
+  .registration-side .trip-postcard { width:100%; height:100%; min-height:0; max-height:none; aspect-ratio:auto; border-radius:20px; transform:none; }
+  .registration-side .trip-ticket { padding:15px; }
+  .registration-side .trip-ticket-facts { margin:12px 0; }
+  .registration-side .trip-ticket-total { padding-top:11px; }
   .trip-postcard>img { position:absolute; inset:0; display:block; }
+}
+@media(min-width:821px) and (max-height:700px) {
+  .registration-side { gap:11px; padding:20px 24px; }
+  .registration-side .trip-intro p { display:none; }
+}
+/* Short windows get a single outer scroll area so no summary information is cut off. */
+@media(min-width:821px) and (max-height:570px) {
+  .pass-modal .pass-modal-card { overflow-y:auto; }
+  .registration-side { height:560px; }
+  .registration-main { max-height:none; overflow:visible; }
 }
 .resort-explorer { padding:30px; border:1px solid #dde6d7; border-radius:28px; background:linear-gradient(130deg,#f0f6e8,#fffdf5 65%); box-shadow:0 18px 40px #123d2310; }
 .resort-intro h2 { color:var(--green); margin:6px 0; font-size:clamp(29px,3vw,42px); }
@@ -262,15 +275,15 @@
 .how-modal-steps article:after { display:none; }
 .how-modal-steps article:nth-child(2) { background:#f0f6e8; }
 .how-modal-steps article:nth-child(3) { background:#fff7df; }
-.how-modal-visual { min-height:460px; align-self:stretch; border-radius:100px 100px 28px 28px; background:radial-gradient(circle at 20% 15%,#469772,transparent 48%),linear-gradient(155deg,#15674e,#043d32); box-shadow:inset 0 0 0 1px #ffffff30,0 18px 35px #064b3218; }
-.how-modal-visual:before { background:none; box-shadow:none; border:1px solid #ffffff25; width:220px; height:360px; }
+.how-modal-visual { min-height:460px; align-self:stretch; border-radius:22px; background:radial-gradient(circle at 20% 15%,#469772,transparent 48%),linear-gradient(155deg,#15674e,#043d32); box-shadow:inset 0 0 0 1px #ffffff30,0 18px 35px #064b3218; }
+.how-modal-visual:before { background:linear-gradient(135deg,#84d4b320,#ffffff04); box-shadow:12px 14px 0 #012f3429; border:1px solid #ffffff25; width:195px; height:280px; border-radius:18px; transform:rotate(-7deg); }
 .how-modal-visual img { height:300px; max-width:210px; margin-top:10px; }
 .how-modal-sun { width:57px; height:57px; top:25px; left:18px; }
 .how-visual-label { position:absolute; bottom:25px; color:#f5e3a5; font-size:9px; letter-spacing:1.6px; text-align:center; }
 .how-visual-label strong { display:block; margin-top:7px; color:#fffdf3; font:600 22px Outfit,sans-serif; letter-spacing:-.4px; }
 .how-visual-eyebrow { position:absolute; top:53px; left:36px; right:25px; color:#e6f5df; font-size:8px; letter-spacing:1.6px; text-align:right; line-height:1.7; }
 .how-modal .how-modal-sun { width:44px; height:44px; left:13px; top:58px; box-shadow:0 0 0 10px #ffcf4320; }
-.how-orbit { position:absolute; inset:90px 15px 95px; border:1px dashed #b8e4c84d; border-radius:50%; transform:rotate(25deg); }
+.how-orbit { position:absolute; inset:110px 30px 120px; border:1px solid #b8e4c82b; border-radius:18px; transform:rotate(8deg); }
 .how-floating-note { position:absolute; z-index:3; left:-12px; bottom:105px; display:flex; align-items:center; gap:9px; padding:12px 15px; background:#fffdf1f5; border:1px solid #e1ead9; border-radius:15px; box-shadow:0 10px 25px #012e3029; color:#12513e; font-size:12px; font-weight:700; transform:rotate(-4deg); }
 .how-floating-note .ui-icon { width:24px; height:24px; }
 .how-floating-note small { display:block; margin-top:3px; font-size:9px; font-weight:400; color:#607568; }

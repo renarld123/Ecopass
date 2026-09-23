@@ -7,7 +7,10 @@
 .visitor-explorer button:disabled{opacity:.5;cursor:wait}
 .visitor-explorer button:focus-visible,.visitor-explorer a:focus-visible,.visitor-explorer input:focus-visible,.visitor-explorer summary:focus-visible{outline:3px solid #d5a72c;outline-offset:3px}
 .visitor-explorer .ui-icon{width:20px;height:20px;flex-shrink:0}
-.explore-heading{padding:0 clamp(24px,4vw,76px) 36px;display:flex;justify-content:space-between;align-items:center;gap:32px}
+.explore-heading{padding:0 clamp(24px,4vw,76px) 36px;display:flex;justify-content:space-between;align-items:center;gap:32px;position:relative;isolation:isolate}
+/* Abstract coastal terraces: depth and light, without duplicating map geography. */
+.visitor-explorer::after{content:'';position:absolute;z-index:-1;pointer-events:none;top:-140px;right:-95px;width:650px;height:440px;border:1px solid #a3d7c325;border-radius:60px;background:linear-gradient(145deg,#53918a2e,#082c3633);transform:rotate(-24deg) skewX(12deg);box-shadow:18px 24px 0 #082b3538,19px 25px 0 #79b5a620,42px 52px 0 #082b352e,43px 53px 0 #e9bd621b,68px 80px 0 #082b3526}
+.explore-heading::before{content:'';position:absolute;z-index:-1;pointer-events:none;width:290px;height:155px;left:43%;bottom:10px;border-radius:28px;border:1px solid #84baac1f;background:linear-gradient(135deg,#70af9b0d,#061e2726);transform:rotate(-24deg) skewX(12deg);box-shadow:12px 15px 0 #041f292b,13px 16px 0 #8cb7a617,28px 32px 0 #082b3521}
 .explore-kicker{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:700;letter-spacing:1.6px;color:#92701e}
 .explore-kicker .ui-icon{width:16px;height:16px}
 .explore-heading>.explore-kicker,.explore-heading>div>.explore-kicker{color:#f0c978}
