@@ -283,24 +283,20 @@
 .how-modal-steps article:after { display:none; }
 .how-modal-steps article:nth-child(2) { background:#f0f6e8; }
 .how-modal-steps article:nth-child(3) { background:#fff7df; }
-.how-modal-visual { min-height:460px; align-self:stretch; border-radius:22px; background:radial-gradient(circle at 20% 15%,#469772,transparent 48%),linear-gradient(155deg,#15674e,#043d32); box-shadow:inset 0 0 0 1px #ffffff30,0 18px 35px #064b3218; }
-.how-modal-visual:before { background:linear-gradient(135deg,#84d4b320,#ffffff04); box-shadow:12px 14px 0 #012f3429; border:1px solid #ffffff25; width:195px; height:280px; border-radius:18px; transform:rotate(-7deg); }
-.how-modal-visual img { height:300px; max-width:210px; margin-top:10px; }
-.how-modal-sun { width:57px; height:57px; top:25px; left:18px; }
-.how-visual-label { position:absolute; bottom:25px; color:#f5e3a5; font-size:9px; letter-spacing:1.6px; text-align:center; }
-.how-visual-label strong { display:block; margin-top:7px; color:#fffdf3; font:600 22px Outfit,sans-serif; letter-spacing:-.4px; }
-.how-visual-eyebrow { position:absolute; top:53px; left:36px; right:25px; color:#e6f5df; font-size:8px; letter-spacing:1.6px; text-align:right; line-height:1.7; }
-.how-modal .how-modal-sun { width:44px; height:44px; left:13px; top:58px; box-shadow:0 0 0 10px #ffcf4320; }
-.how-orbit { position:absolute; inset:110px 30px 120px; border:1px solid #b8e4c82b; border-radius:18px; transform:rotate(8deg); }
-.how-floating-note { position:absolute; z-index:3; left:-12px; bottom:105px; display:flex; align-items:center; gap:9px; padding:12px 15px; background:#fffdf1f5; border:1px solid #e1ead9; border-radius:15px; box-shadow:0 10px 25px #012e3029; color:#12513e; font-size:12px; font-weight:700; transform:rotate(-4deg); }
-.how-floating-note .ui-icon { width:24px; height:24px; }
-.how-floating-note small { display:block; margin-top:3px; font-size:9px; font-weight:400; color:#607568; }
-@media(prefers-reduced-motion:no-preference) {
-  .how-modal[open] .how-modal-visual img { animation:howPhoneFloat 6s ease-in-out infinite; }
-  .how-modal[open] .how-floating-note { animation:howNoteFloat 6s ease-in-out infinite; }
-}
-@keyframes howPhoneFloat { 0%,100% { transform:translateY(0) rotate(4deg); } 50% { transform:translateY(-9px) rotate(1deg); } }
-@keyframes howNoteFloat { 0%,100% { transform:translateY(0) rotate(-4deg); } 50% { transform:translateY(5px) rotate(-2deg); } }
+.how-modal-visual { display:flex; flex-direction:column; min-height:460px; align-self:stretch; padding:26px 22px 0; border:1px solid #d7e5da; border-radius:20px; overflow:hidden; background:linear-gradient(145deg,#f6f9f2,#e7efe6); box-shadow:0 12px 28px #173e2910; }
+.how-modal-visual:before { display:none; }
+.how-showcase-heading { position:relative; z-index:2; width:100%; }
+.how-showcase-kicker { display:block; margin-bottom:14px; color:#607565; font-size:8px; font-weight:700; letter-spacing:1.5px; line-height:1.6; }
+.how-showcase-heading>strong { display:block; color:#144d38; font:600 32px/1.08 Outfit,sans-serif; letter-spacing:-.8px; }
+.how-showcase-heading>span:last-child { display:block; margin-top:11px; color:#64786b; font-size:11px; line-height:1.6; }
+.how-showcase-device { position:relative; isolation:isolate; flex:1; display:grid; place-items:center; width:100%; min-height:290px; padding:18px 0 12px; }
+.how-showcase-device:before { content:""; position:absolute; z-index:-1; inset:44px 3px 22px; border:1px solid #ffffff80; border-radius:14px; background:linear-gradient(145deg,#c4dccb,#e4ede2); box-shadow:0 10px 24px #31513b0c; transform:skewY(-5deg); }
+.how-modal-visual .how-showcase-device img { display:block; height:270px; width:auto; max-width:100%; margin:0; transform:rotate(0); filter:drop-shadow(7px 13px 9px #193d332c); }
+.how-showcase-footer { display:flex; align-items:center; align-self:stretch; gap:10px; margin:0 -22px; padding:19px 18px; border-top:1px solid #d7e5da; background:#fffefa; }
+.how-showcase-icon { display:grid; place-items:center; flex:0 0 34px; height:34px; border:1px solid #dfe8d9; border-radius:10px; color:#27624b; background:#f0f5e9; }
+.how-showcase-icon .ui-icon { width:19px; height:19px; }
+.how-showcase-footer strong { display:block; color:#244e3b; font-size:12px; line-height:1.5; }
+.how-showcase-footer small { display:block; margin-top:3px; color:#718174; font-size:9px; line-height:1.6; }
 /* The final receipt uses the whole dialog; keep overflow only when content needs it. */
 @media(min-width:821px) {
   .pass-modal[data-current-step="3"] .registration-layout { grid-template-columns:1fr; }
