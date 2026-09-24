@@ -72,6 +72,7 @@
     if(travel)$('#route-distance').textContent=travel.offRoute?'Off route':R.meters(travel.remaining);
     if(nearby)routeStatus('You are near the booth. Look for the EcoPass team and present your confirmed QR.');
     else if(travel?.offRoute)routeStatus('You are away from the mapped route. Tap Get directions to update it from your current location.');
+    else if(travel&&fromGPS)routeStatus('Following your location. Remaining distance updates as you move.'+(route.endGap>60?' The route ends on the nearest reachable road to the booth.':''));
   }
   function drawRoute(){
     clearDrawing();if(mapMode==='terrain')scene.route(route.geometry,origin);

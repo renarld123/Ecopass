@@ -64,5 +64,6 @@ test('live distance updates, near-booth status, and stop navigation clears the b
   assert.match(h.node('#map-distance-status').textContent,/550 m/);
   h.geo.watchSuccess({coords:{longitude:end[0],latitude:end[1],accuracy:10}});assert.match(h.node('#map-distance-status').textContent,/near the booth/);
   h.geo.watchSuccess({coords:{longitude:123,latitude:11,accuracy:10}});assert.match(h.node('#map-distance-status').textContent,/straight-line/);assert.match(h.node('#route-status').textContent,/away from/);assert.equal(h.node('#route-distance').textContent,'Off route');
+  h.geo.watchSuccess({coords:{longitude:start[0],latitude:start[1],accuracy:10}});assert.match(h.node('#route-status').textContent,/Following your location/);assert.equal(h.node('#route-distance').textContent,'550 m');
   h.node('#route-cancel').listeners.click();assert.equal(h.node('#map-distance-status').hidden,true);
 });
