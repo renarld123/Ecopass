@@ -10,6 +10,7 @@
   const testPayment = record => record.checkoutMode==='test';
   const unknownOnline = record => record.paymentSource==='paymongo' && !['live','test'].includes(record.checkoutMode);
   const realPaid = record => record.paymentStatus==='PAID' && !testPayment(record) && !unknownOnline(record);
+  const unpaid = record => ['PAY_AT_OFFICE','PENDING','CHECKOUT_FAILED'].includes(record.paymentStatus);
   const statusNames = {PAID:'Paid',PENDING:'Online pending',PAY_AT_OFFICE:'Due at office',CHECKOUT_FAILED:'Checkout failed'};
   const statusBadge = record => `<span class="badge ${record.paymentStatus==='PAID'?'paid':record.paymentStatus==='CHECKOUT_FAILED'?'failed':'pending'}">${escape(statusNames[record.paymentStatus]||record.paymentStatus)}</span>${testPayment(record)?'<span class="badge test">TEST</span>':unknownOnline(record)?'<span class="badge test">UNCLASSIFIED</span>':''}`;
   const initials = name => String(name||'?').trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase();
@@ -29,27 +30,29 @@
   }
   function tableRecords() {
     const query=$('#visitor-search').value.trim().toLowerCase(), status=$('#payment-filter').value;
-    return selectedVisits().filter(r=>(status==='all'||r.paymentStatus===status)&&(!query||[r.fullName,r.id,r.address,r.contact].some(value=>String(value||'').toLowerCase().includes(query)))).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+    return selectedVisits().filter(r=>(status==='all'||(status==='unpaid'?unpaid(r):r.paymentStatus===status))&&(!query||[r.fullName,r.id,r.address,r.contact].some(value=>String(value||'').toLowerCase().includes(query)))).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
   }
   function showView(next) {
     if(!['overview','tourists','booths','scanner'].includes(next))return;
     view=next;if(view!=='scanner')stopCamera();
     document.querySelectorAll('[data-panel]').forEach(el=>el.hidden=el.dataset.panel!==view);
     document.querySelectorAll('.nav-link[data-view]').forEach(el=>{el.classList.toggle('active',el.dataset.view===view);el.setAttribute('aria-current',el.dataset.view===view?'page':'false');});
-    const titles={overview:['A CLEAR VIEW OF EVERY VISIT','Welcome back, admin.','Your collections, travelers, and check-ins, together in one place.'],tourists:['PEOPLE BEHIND EVERY PASS','Know your visitors.','Find contact details, visit plans, group composition, and payment history.'],booths:['YOUR TEAM, ON THE MAP','A connected welcome.','Place your scanning booths, update their details, and plan arrivals.'],scanner:['A SMOOTH START TO EVERY VISIT','Scan. Verify. Welcome.','Confirm a valid pass and record the whole group at your booth.']};
+    const titles={overview:['A CLEAR VIEW OF EVERY VISIT','Operations overview','Your collections, travelers, and check-ins, together in one place.'],tourists:['PEOPLE BEHIND EVERY PASS','Tourist records','Find contact details, visit plans, group composition, and payment history.'],booths:['YOUR TEAM, ON THE MAP','Your booth network','Place your scanning booths, update their details, and plan arrivals.'],scanner:['A SMOOTH START TO EVERY VISIT','Visitor check-in','Confirm a valid pass and record the whole group at your booth.']};
     $('#page-kicker').textContent=titles[view][0];$('#page-title').textContent=titles[view][1];$('#page-description').textContent=titles[view][2];
+    $('#workspace-view').textContent={overview:'Overview',tourists:'Tourist records',booths:'Scanning booths',scanner:'Visitor check-in'}[view];
     $('#visit-filters').hidden=['booths','scanner'].includes(view);$('#export-data').hidden=['booths','scanner'].includes(view);
     if(view==='booths')setTimeout(initMap,30);
     history.replaceState(null,'','#'+view);
+    window.scrollTo?.({top:0,behavior:'instant'});
   }
   async function refresh() {
-    if(loading)return;loading=true;$('#refresh-data').disabled=true;$('#sync-status').textContent='Updating…';
+    if(loading)return;loading=true;$('#refresh-data').disabled=true;$('#sync-status').textContent='Updating…';$('#sync-status').dataset.state='loading';
     try {
       const next=await api('/api/admin/operations');
-      data=next;if(!$('#ledger-day').value)$('#ledger-day').value=data.today;$('#ops-error').hidden=true;render();$('#sync-status').textContent='Up to date';$('#updated-at').textContent='Updated '+timestamp(data.updatedAt)+' · Manila time';
+      data=next;if(!$('#ledger-day').value)$('#ledger-day').value=data.today;$('#ops-error').hidden=true;render();$('#sync-status').textContent='Up to date';$('#sync-status').dataset.state='ready';$('#updated-at').textContent='Updated '+timestamp(data.updatedAt)+' · Manila time';
       if(profileId && $('#visitor-dialog').open)renderProfile(profileId);
-    } catch(error){report(error);$('#sync-status').textContent='Refresh needed';}
-    finally{loading=false;$('#refresh-data').disabled=false;}
+    } catch(error){report(error);$('#sync-status').textContent='Refresh needed';$('#sync-status').dataset.state='error';}
+    finally{loading=false;$('#refresh-data').disabled=false;if(view==='booths')initMap();}
   }
   function render() { renderOverview();renderTable();renderBooths();renderHistory();renderLedger(); }
   function ledgerRecords() {
@@ -74,18 +77,22 @@
     $('#metric-guests').textContent=records.reduce((s,r)=>s+guests(r),0).toLocaleString();$('#metric-registration-count').textContent=`${records.length} registrations · test records included`;
     $('#metric-scans').textContent=data.scans.filter(s=>s.date===data.today).reduce((n,s)=>n+s.guests,0).toLocaleString();
     const from=$('#filter-from').value,to=$('#filter-to').value;
+    $('#filter-today').setAttribute('aria-pressed',String(from===data.today&&to===data.today));$('#filter-all').setAttribute('aria-pressed',String(!from&&!to));
+    const unpaidCount=records.filter(unpaid).length;$('#unpaid-shortcut-count').textContent=unpaidCount+' unpaid '+(unpaidCount===1?'registration':'registrations')+' · selected visits';
     $('#filter-caption').textContent=from||to?`${from?date(from):'First visit'} — ${to?date(to):'Latest visit'}`:'All registered visits';
     const series=Array.from({length:7},(_,i)=>{const d=new Date(data.today+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+i);const day=d.toISOString().slice(0,10);return {day,n:data.visitors.filter(r=>r.visitDate===day).reduce((s,r)=>s+guests(r),0)};});
     const peak=Math.max(1,...series.map(p=>p.n));
     $('#arrival-chart').innerHTML=series.map(p=>`<div class="chart-column" aria-label="${escape(date(p.day))}: ${p.n} travelers"><span>${p.n}</span><div class="chart-bar" style="height:${Math.max(2,p.n/peak*125)}px"></div><small>${escape(new Intl.DateTimeFormat('en-PH',{weekday:'short',timeZone:'UTC'}).format(new Date(p.day+'T00:00:00Z')))}</small></div>`).join('');
-    const total=paid.reduce((n,r)=>n+r.amount,0),methods=[['Office / physical',r=>r.paymentSource==='tourism-office'],['GCash',r=>r.paymentMethod==='GCash'],['Maya',r=>r.paymentMethod==='Maya'],['Card',r=>r.paymentMethod==='Credit/Debit Card']];
-    $('#payment-breakdown').innerHTML=methods.map(([name,filter])=>{const sum=paid.filter(filter).reduce((n,r)=>n+r.amount,0);return `<div class="breakdown-row"><div><span>${name}</span><strong>${currency(sum)}</strong></div><div class="meter"><i style="width:${total?sum/total*100:0}%"></i></div></div>`;}).join('');
+    const total=paid.reduce((n,r)=>n+r.amount,0),methods=[['Office / physical',r=>r.paymentSource==='tourism-office','cash'],['GCash',r=>r.paymentMethod==='GCash','wallet'],['Maya',r=>r.paymentMethod==='Maya','phone'],['Card',r=>r.paymentMethod==='Credit/Debit Card','card']];
+    $('#payment-breakdown').innerHTML=methods.map(([name,filter,symbol])=>{const sum=paid.filter(filter).reduce((n,r)=>n+r.amount,0);return `<div class="breakdown-row"><div><span class="method-name">${icon(symbol)}${name}</span><strong>${currency(sum)}</strong></div><div class="meter"><i style="width:${total?sum/total*100:0}%"></i></div></div>`;}).join('');
     const testSum=records.filter(r=>r.paymentStatus==='PAID'&&testPayment(r)).reduce((n,r)=>n+r.amount,0),unknown=records.filter(r=>r.paymentStatus==='PAID'&&unknownOnline(r)).reduce((n,r)=>n+r.amount,0);
     $('#test-totals').textContent=`Excluded from collections: ${currency(testSum)} test payments${unknown?'; '+currency(unknown)+' unclassified online payments':''}.`;
     $('#recent-visitors').innerHTML=records.slice().sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).slice(0,5).map(r=>`<div class="visitor-mini"><span class="avatar">${escape(initials(r.fullName))}</span><div><button data-profile="${escape(r.id)}"><strong>${escape(r.fullName)}</strong><small>${escape(date(r.visitDate))} · ${guests(r)} travelers</small></button></div>${statusBadge(r)}</div>`).join('')||empty('Your first registered visitors will appear here.','users');
     const active=data.booths.filter(b=>b.active);$('#active-booths').textContent=`${active.length} active`;
+    $('#booth-shortcut-count').textContent=active.length+' active '+(active.length===1?'checkpoint':'checkpoints')+' · view locations';
     $('#booth-summary').innerHTML=active.slice(0,3).map(b=>`<div class="visitor-mini"><img class="mini-kiosk" src="/booth-kiosk.svg" alt=""><div><strong>${escape(b.name)}</strong><small>${escape(b.hours||'Hours not set')}</small></div><span class="badge paid">Active</span></div>`).join('')||empty('Add your first scanning booth to place it on the map.','pin');
   }
+  $('#review-unpaid').addEventListener('click',()=>{$('#visitor-search').value='';$('#payment-filter').value='unpaid';page=1;renderTable();showView('tourists');$('#visitor-search').focus();});
   function renderTable() {
     const records=tableRecords(),pages=Math.max(1,Math.ceil(records.length/15));page=Math.max(1,Math.min(page,pages));
     $('#record-count').textContent=`${records.length} records`;
@@ -96,7 +103,7 @@
     const r=data.visitors.find(v=>v.id===id);if(!r)return;profileId=id;
     const details=[['Phone',r.contact],['Address',r.address],['Date of visit',date(r.visitDate)],['Valid until',date(r.validUntil)],['Length of stay',r.stay],['Payment method',r.paymentMethod],['Amount',currency(r.amount)],['Payment received',timestamp(r.paidAt)],['Registered',timestamp(r.createdAt)],['Discount ID',r.hasDiscountId?'Uploaded':'No ID uploaded']];
     const scans=data.scans.filter(s=>s.passId===id);
-    $('#visitor-profile').innerHTML=`<div class="profile-hero"><span class="avatar">${escape(initials(r.fullName))}</span><div><h2>${escape(r.fullName)}</h2><p>${escape(r.id)}</p></div></div>${statusBadge(r)}<dl class="profile-grid">${details.map(([k,v])=>`<div><dt>${k}</dt><dd>${escape(v||'Not provided')}</dd></div>`).join('')}</dl><div class="profile-section"><h3>Travel party · ${guests(r)} travelers</h3><div class="group-pills">${[['adult','Local adults'],['foreign','Foreign visitors'],['senior','Senior / PWD / student'],['child','Children below 8']].map(([k,label])=>`<span>${r.groups?.[k]||0} ${label}</span>`).join('')}</div></div><div class="profile-section"><h3>Check-in history</h3>${scans.length?scans.slice().reverse().map(s=>`<p class="muted">${escape(s.boothName)} · ${escape(timestamp(s.at))}</p>`).join(''):'<p class="muted">No check-ins recorded.</p>'}</div><div class="profile-actions">${r.paymentStatus==='PAY_AT_OFFICE'&&['Pay at Tourism Office (Cash)','Physical Payment'].includes(r.paymentMethod)?`<button class="primary" data-collect="${escape(id)}">Record office payment</button>`:''}<button class="ghost" data-use-pass="${escape(id)}">Verify for check-in</button></div>`;
+    $('#visitor-profile').innerHTML=`<div class="profile-hero"><span class="avatar">${escape(initials(r.fullName))}</span><div><h2>${escape(r.fullName)}</h2><p>${escape(r.id)}</p></div></div>${statusBadge(r)}<dl class="profile-grid">${details.map(([k,v])=>`<div><dt>${k}</dt><dd>${escape(v||'Not provided')}</dd></div>`).join('')}</dl><div class="profile-section"><h3>Travel party · ${guests(r)} travelers</h3><div class="group-pills">${[['adult','Local adults'],['foreign','Foreign visitors'],['senior','Senior / PWD / student'],['child','Children below 8']].map(([k,label])=>`<span>${r.groups?.[k]||0} ${label}</span>`).join('')}</div></div><div class="profile-section"><h3>Check-in history</h3>${scans.length?scans.slice().reverse().map(s=>`<p class="muted">${escape(s.boothName)} · ${escape(timestamp(s.at))}</p>`).join(''):'<p class="muted">No check-ins recorded.</p>'}</div><div class="profile-actions">${r.paymentStatus==='PAY_AT_OFFICE'&&['Pay at Tourism Office (Cash)','Physical Payment'].includes(r.paymentMethod)?`<button class="primary" data-collect="${escape(id)}">${icon('cash')}Record office payment</button>`:''}<button class="ghost" data-use-pass="${escape(id)}">${icon('shield')}Verify for check-in</button></div>`;
   }
   function editBooth(id) {
     const b=data.booths.find(b=>b.id===id);if(!b)return;
@@ -113,11 +120,12 @@
   }
   function renderBooths() {
     $('#booth-count').textContent=`${data.booths.length} locations`;
-    $('#booth-list').innerHTML=data.booths.map(b=>`<article class="booth-card"><div class="booth-card-top"><img src="/booth-kiosk.svg" alt="EcoPass scanning kiosk"><span class="badge ${b.active?'paid':'pending'}">${b.active?'Active':'Inactive'}</span></div><h3>${escape(b.name)}</h3><p>${escape(b.address)}<br>${escape(b.hours||'Hours not set')}<br>${escape(b.contact||'Contact not set')}</p><div class="actions"><button class="ghost" data-edit-booth="${escape(b.id)}">Edit booth</button><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.lat+','+b.lng)}" target="_blank" rel="noopener">Directions ${icon('external')}</a></div></article>`).join('')||empty('No booth locations yet. Add the first location using the map and form.','pin');
+    $('#booth-list').innerHTML=data.booths.map(b=>`<article class="booth-card"><div class="booth-card-top"><img src="/booth-kiosk.svg" alt="EcoPass scanning kiosk"><span class="badge ${b.active?'paid':'pending'}">${b.active?'Active':'Inactive'}</span></div><h3>${escape(b.name)}</h3><p>${escape(b.address)}<br>${escape(b.hours||'Hours not set')}<br>${escape(b.contact||'Contact not set')}</p><div class="actions"><button class="ghost" data-edit-booth="${escape(b.id)}">${icon('edit')}Edit booth</button><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.lat+','+b.lng)}" target="_blank" rel="noopener">Directions ${icon('external')}</a></div></article>`).join('')||empty('No booth locations yet. Add the first location using the map and form.','pin');
     const selected=$('#scan-booth').value;$('#scan-booth').innerHTML='<option value="">Choose an active booth</option>'+data.booths.filter(b=>b.active).map(b=>`<option value="${escape(b.id)}">${escape(b.name)}</option>`).join('');if(data.booths.some(b=>b.id===selected&&b.active))$('#scan-booth').value=selected;
     if(map)drawMarkers();
   }
   function initMap() {
+    if(loading)return;
     if(!window.L){$('#map-help').textContent='The map could not load. You can still enter latitude and longitude, save booths, and open their directions.';return;}
     if(map){map.invalidateSize();window.EcoPassMapScene?.resize();return;}
     installMapDesign();
