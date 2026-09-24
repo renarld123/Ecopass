@@ -413,6 +413,16 @@ async function handler(req, res) {
     if (url.pathname === '/api/admin/registrations' && req.method === 'GET') return json(res, 200, await readRegistrations());
     if (url.pathname === '/api/admin/operations' && req.method === 'GET') return json(res, 200, await operations.snapshot());
     if (url.pathname === '/api/admin/booths' && req.method === 'POST') return json(res, 200, await operations.saveBooth(await jsonBody(req)));
+    if (url.pathname === '/api/admin/booth-image' && req.method === 'POST') {
+      const type=String(req.headers['content-type']||'').split(';')[0];
+      if(!IMAGE_TYPES.has(type))return json(res,415,{error:'Use a JPG, PNG, WebP, or GIF image.'});
+      const file=await body(req,3*1024*1024);
+      if(file.length<16||!matchesImageType(file,type))return json(res,415,{error:'The file contents do not match a supported image.'});
+      const filename=`booth-image-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${IMAGE_TYPES.get(type)}`;
+      if(USE_BLOB)await putBlob(`uploads/${filename}`,file,{access:'private',addRandomSuffix:false,contentType:type});
+      else await fsp.writeFile(path.join(UPLOAD_DIR,filename),file,{flag:'wx'});
+      return json(res,201,{url:`/uploads/${filename}`});
+    }
     if (url.pathname === '/api/admin/scan' && req.method === 'GET') return json(res, 200, await operations.lookup(url.searchParams.get('code')));
     if (url.pathname === '/api/admin/check-in' && req.method === 'POST') return json(res, 200, await operations.checkIn(await jsonBody(req)));
     if (/^\/api\/admin\/registrations\/[^/]+\/confirm-payment$/.test(url.pathname) && req.method === 'POST') {

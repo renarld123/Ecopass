@@ -100,7 +100,7 @@
   }
   function editBooth(id) {
     const b=data.booths.find(b=>b.id===id);if(!b)return;
-    const form=$('#booth-form');for(const key of ['id','version','name','address','lat','lng','hours','contact','notes'])form.elements[key].value=b[key]??'';form.elements.active.checked=b.active;
+    const form=$('#booth-form');for(const key of ['id','version','name','address','lat','lng','hours','contact','notes','backgroundImage'])form.elements[key].value=b[key]??'';form.elements.active.checked=b.active;renderBoothImage();
     clearDraftPin();$('#booth-form-title').textContent='Edit scanning booth';$('#booth-error').textContent='';showView('booths');if(map)map.setView([b.lat,b.lng],16);window.EcoPassMapScene?.focus(b.lat,b.lng);$('#map-help').textContent='Editing '+b.name+'. Click another spot to move its pin, then save to apply.';
   }
   function clearDraftPin(){if(draftMarker&&map)map.removeLayer(draftMarker);draftMarker=null;window.EcoPassMapScene?.clear();$('#pick-location').textContent='Choose a spot on the map';}
@@ -181,8 +181,18 @@
     if(target.dataset.collect){confirmId=target.dataset.collect;const r=data.visitors.find(r=>r.id===confirmId);$('#confirm-description').textContent=`${currency(r.amount)} from ${r.fullName} · ${r.id}`;$('#confirm-error').textContent='';$('#payment-dialog').showModal();}
     if(target.dataset.usePass){$('#visitor-dialog').close();showView('scanner');$('#scan-code').value=target.dataset.usePass;verifyPass();}
   });
+  let boothImageEpoch=0;
+  function renderBoothImage(){boothImageEpoch++;const url=$('#booth-form').elements.backgroundImage.value;$('#booth-image-preview').hidden=!url;$('#booth-image-remove').hidden=!url;if(url)$('#booth-image-preview').src=url;else $('#booth-image-preview').removeAttribute('src');$('#booth-image-file').value='';$('#booth-image-status').textContent='';$('#booth-form button[type="submit"]').disabled=false;}
+  $('#booth-image-remove').addEventListener('click',()=>{$('#booth-form').elements.backgroundImage.value='';renderBoothImage();$('#booth-image-status').textContent='Background removed from this draft. Save the booth to apply.';});
+  $('#booth-image-file').addEventListener('change',async()=>{
+    const file=$('#booth-image-file').files[0];if(!file)return;const token=++boothImageEpoch,button=$('#booth-form button[type="submit"]');
+    if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)||file.size>3*1024*1024){button.disabled=false;$('#booth-image-status').textContent='Choose a JPG, PNG, WebP or GIF under 3 MB.';return;}
+    button.disabled=true;$('#booth-image-status').textContent='Uploading background…';
+    try{const response=await fetch('/api/admin/booth-image',{method:'POST',headers:{'Content-Type':file.type},body:file,signal:AbortSignal.timeout(30000)});const result=await response.json();if(!response.ok)throw new Error(result.error||'Image upload failed.');if(token!==boothImageEpoch)return;$('#booth-form').elements.backgroundImage.value=result.url;renderBoothImage();$('#booth-image-status').textContent='Image ready. Save the booth to publish it.';}
+    catch(error){if(token===boothImageEpoch)$('#booth-image-status').textContent=error.message;}finally{if(token===boothImageEpoch)button.disabled=false;}
+  });
   $('#booth-form').addEventListener('submit',async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;$('#booth-error').textContent='';const form=event.target;const value=Object.fromEntries(new FormData(form));value.version=Number(value.version);value.active=form.elements.active.checked;try{const booth=await api('/api/admin/booths',{method:'POST',body:JSON.stringify(value)});await refresh();editBooth(booth.id);toast('Booth location saved.');}catch(error){$('#booth-error').textContent=error.message;}finally{button.disabled=false;}});
-  $('#new-booth').addEventListener('click',()=>{$('#booth-form').reset();$('#booth-form').elements.id.value='';$('#booth-form').elements.version.value='';$('#booth-form-title').textContent='Add a scanning booth';$('#booth-error').textContent='';clearDraftPin();$('#pick-location').textContent='Choose a spot on the map';$('#map-help').textContent='Click any spot on the map to pin a new booth. Nothing changes until you save.';});
+$('#new-booth').addEventListener('click',()=>{$('#booth-form').reset();renderBoothImage();$('#booth-form').elements.id.value='';$('#booth-form').elements.version.value='';$('#booth-form-title').textContent='Add a scanning booth';$('#booth-error').textContent='';clearDraftPin();$('#pick-location').textContent='Choose a spot on the map';$('#map-help').textContent='Click any spot on the map to pin a new booth. Nothing changes until you save.';});
   $('#pick-location').addEventListener('click',()=>{initMap();if(!map)return;if(draftMarker){const p=draftMarker.getLatLng();map.panTo(p);window.EcoPassMapScene?.focus(p.lat,p.lng);}$('.map-stage').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});$('#map-help').textContent='Click the exact scanning-booth location on the map, then complete the form and save.';});
   $('#fit-booths').addEventListener('click',()=>{if(map&&data.booths.length)map.fitBounds(markers.getBounds(),{padding:[35,35],maxZoom:15});else if(map)map.setView([9.75,122.40],12);});
   $('#confirm-collection').addEventListener('click',async event=>{const button=event.target;button.disabled=true;try{await api('/api/admin/registrations/'+encodeURIComponent(confirmId)+'/confirm-payment',{method:'POST'});$('#payment-dialog').close();toast('Collection recorded. The visitor’s pass is active.');await refresh();}catch(error){$('#confirm-error').textContent=error.message;}finally{button.disabled=false;}});

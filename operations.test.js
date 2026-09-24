@@ -52,3 +52,11 @@ test('public map only exposes active booth locations and never reads tourist rec
   await ops.saveBooth({...first,name:'Renamed published booth'});
   assert.equal((await ops.publicBooths())[0].name,'Renamed published booth');
 });
+test('booth background persists, can be removed, and rejects external or unsafe image paths',async t=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'ecopass-booth-image-test-'));t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+  const ops=createOperations({useBlob:false,dataDir:dir,readRegistrations:async()=>[]}),image='/uploads/booth-image-12345678-abcdef12.png';
+  const booth=await ops.saveBooth({name:'Test booth',address:'Public address',lat:9.75,lng:122.4,backgroundImage:image});assert.equal((await ops.publicBooths())[0].backgroundImage,image);
+  const fresh=createOperations({useBlob:false,dataDir:dir,readRegistrations:async()=>[]});assert.equal((await fresh.snapshot()).booths[0].backgroundImage,image);
+  for(const url of ['javascript:alert(1)','https://example.com/image.png','/uploads/../data/operations.json','/uploads/private-id.png'])await assert.rejects(ops.saveBooth({...booth,backgroundImage:url}),/valid booth background/);
+  await ops.saveBooth({...booth,backgroundImage:''});assert.equal((await ops.publicBooths())[0].backgroundImage,undefined);
+});

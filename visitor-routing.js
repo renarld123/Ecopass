@@ -4,6 +4,16 @@
   const validPoint=p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)&&Math.abs(p[0])<=180&&Math.abs(p[1])<=90;
   function distance(a,b){const rad=Math.PI/180,dLat=(b[1]-a[1])*rad,dLng=(b[0]-a[0])*rad;const h=Math.sin(dLat/2)**2+Math.cos(a[1]*rad)*Math.cos(b[1]*rad)*Math.sin(dLng/2)**2;return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));}
   const meters=n=>n<1000?Math.round(n)+' m':(n/1000).toFixed(1)+' km';
+  function progress(point,route){
+    const coords=route.geometry.coordinates,rad=Math.PI/180,scaleX=111195*Math.cos(point[1]*rad),scaleY=111195;
+    let closest=Infinity,along=0,total=0,at=0;
+    for(let i=1;i<coords.length;i++){
+      const a=coords[i-1],b=coords[i],ax=(a[0]-point[0])*scaleX,ay=(a[1]-point[1])*scaleY,bx=(b[0]-point[0])*scaleX,by=(b[1]-point[1])*scaleY,dx=bx-ax,dy=by-ay;
+      const t=Math.max(0,Math.min(1,-(ax*dx+ay*dy)/(dx*dx+dy*dy||1))),gap=Math.hypot(ax+t*dx,ay+t*dy),length=distance(a,b);
+      if(gap<closest){closest=gap;at=along+t*length;}along+=length;total+=length;
+    }
+    return {offRoute:closest>100,remaining:total?Math.max(0,route.distance*(1-at/total)):0,gap:closest};
+  }
   function time(seconds){const minutes=Math.max(1,Math.round(seconds/60));return minutes<60?minutes+' min':Math.floor(minutes/60)+' hr'+(minutes%60?' '+minutes%60+' min':'');}
   function instruction(step){
     const m=step.maneuver||{},road=step.name?' onto '+step.name:'',turn=m.modifier||'straight';
@@ -41,5 +51,5 @@
       return parseRoute(data);
     };
   }
-  return {validPoint,distance,meters,time,instruction,parseRoute,createClient};
+  return {validPoint,distance,meters,time,instruction,parseRoute,createClient,progress};
 });

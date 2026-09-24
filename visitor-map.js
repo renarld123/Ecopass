@@ -5,7 +5,7 @@
   const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
   const icon=name=>'<svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#'+name+'"></use></svg>';
   let booths=[],map,markers=[],mapMode='terrain',ready=false,started=false,mapBusy=false,selected=null;
-  let mode='walk',origin=null,route=null,routeLayer,locationMarker,picking=false,watch=null,sequence=0,controller=null,routeBusy=false,fromGPS=false;
+  let mode='walk',modeChosen=false,origin=null,route=null,routeLayer,locationMarker,picking=false,watch=null,sequence=0,controller=null,routeBusy=false,fromGPS=false;
   const status=message=>$('#explore-status').textContent=message;
   const routeStatus=message=>$('#route-status').textContent=message;
   function stopWatch(){if(watch!==null){navigator.geolocation?.clearWatch(watch);watch=null;}$('#route-live').hidden=true;}
@@ -13,6 +13,7 @@
   function cancelRoute(message=''){
     sequence++;controller?.abort();controller=null;stopWatch();clearDrawing();route=null;origin=null;fromGPS=false;picking=false;routeBusy=false;
     $('#route-result').hidden=true;$('#map-route-summary').hidden=true;$('#route-pin-hint').hidden=true;$('#route-cancel').hidden=true;$('#route-gps').disabled=!ready;$('#route-pin').disabled=!ready;
+    $('#map-distance-status').hidden=true;
     $('#explore-flat').disabled=mapBusy;section.classList.remove('is-picking');routeStatus(message);
   }
   function renderList(){
@@ -22,6 +23,7 @@
   function choose(id,focus=true){
     const b=booths.find(b=>b.id===id);if(!b)return;cancelRoute();selected=b;$('#explore-list-panel').hidden=true;$('#explore-detail').hidden=false;
     $('#booth-name').textContent=b.name;$('#booth-address').textContent=b.address;$('#booth-hours').textContent=b.hours||'Confirm opening hours before visiting';$('#booth-number').textContent=String(booths.indexOf(b)+1).padStart(2,'0');
+    const photo=$('#booth-background');photo.hidden=!b.backgroundImage;if(b.backgroundImage)photo.src=b.backgroundImage;else photo.removeAttribute('src');
     if(ready&&focus){if(mapMode==='terrain')scene.focus(b.lat,b.lng);else map.setView([b.lat,b.lng],16);}
     status('Your checkpoint is '+b.name+'. Get directions without leaving EcoPass.');
   }
@@ -62,6 +64,15 @@
     if(mapMode==='terrain')scene.userPosition(point[0],point[1]);
     else if(map){if(locationMarker)locationMarker.setLatLng([point[1],point[0]]);else locationMarker=L.marker([point[1],point[0]],{icon:L.divIcon({className:'visitor-location-dot',iconSize:[20,20]}),title:'Your starting point or current location',interactive:false}).addTo(map);}
   }
+  function updateDistance(point,accuracy=0){
+    if(!selected)return;const direct=R.distance(point,[selected.lng,selected.lat]),travel=route?R.progress(point,route):null;
+    const nearby=accuracy<=50&&direct<40;
+    $('#map-distance-status').hidden=false;
+    $('#map-distance-status').textContent=nearby?'You are near the booth':travel&&!travel.offRoute?R.meters(travel.remaining)+' to booth · route estimate':R.meters(direct)+' to booth · straight-line distance';
+    if(travel)$('#route-distance').textContent=travel.offRoute?'Off route':R.meters(travel.remaining);
+    if(nearby)routeStatus('You are near the booth. Look for the EcoPass team and present your confirmed QR.');
+    else if(travel?.offRoute)routeStatus('You are away from the mapped route. Tap Get directions to update it from your current location.');
+  }
   function drawRoute(){
     clearDrawing();if(mapMode==='terrain')scene.route(route.geometry,origin);
     else{const points=route.geometry.coordinates.map(c=>[c[1],c[0]]);routeLayer=L.layerGroup([L.polyline(points,{color:'#fff',weight:10}),L.polyline(points,{color:'#1478e8',weight:6})]).addTo(map);updatePosition(origin);fit();}
@@ -69,18 +80,22 @@
   function beginWatch(token){
     if(!fromGPS||document.hidden)return;stopWatch();
     watch=navigator.geolocation.watchPosition(position=>{
-      if(token!==sequence)return;const point=[position.coords.longitude,position.coords.latitude];if(!R.validPoint(point))return;updatePosition(point);
+      if(token!==sequence)return;const point=[position.coords.longitude,position.coords.latitude];if(!R.validPoint(point)||!Number.isFinite(position.coords.accuracy)||position.coords.accuracy>1000)return;origin=point;updatePosition(point);updateDistance(point,position.coords.accuracy);
       $('#route-live').hidden=false;$('#route-live').textContent='Live location · accuracy ±'+Math.round(position.coords.accuracy)+' m';
       if(position.coords.accuracy<50&&R.distance(point,[selected.lng,selected.lat])<40)routeStatus('You are near the booth. Look for the EcoPass team and present your confirmed QR.');
     },()=>{if(token!==sequence)return;stopWatch();routeStatus('Location updates stopped. Your route remains visible; tap Get directions to locate again.');},{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
   }
   async function calculate(point,gps,token){
-    if(token!==sequence||!selected)return;origin=point;fromGPS=gps;routeBusy=true;$('#route-gps').disabled=true;$('#route-pin').disabled=true;$('#explore-flat').disabled=true;$('#route-cancel').hidden=false;routeStatus('Finding your '+(mode==='walk'?'walking':'driving')+' route…');
-    controller=new AbortController();const currentController=controller,timeout=setTimeout(()=>currentController.abort(),18000);
+    if(token!==sequence||!selected)return;
+    if(!R.validPoint(point)){routeBusy=false;$('#route-gps').disabled=!ready;$('#route-pin').disabled=!ready;$('#explore-flat').disabled=mapBusy;routeStatus('Your location could not be read. Choose a starting point on the map.');return;}
+    if(selected&&!modeChosen){mode=R.distance(point,[selected.lng,selected.lat])>5000?'drive':'walk';section.querySelectorAll('[data-route-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.routeMode===mode)));}
+    origin=point;fromGPS=gps;routeBusy=true;$('#route-gps').disabled=true;$('#route-pin').disabled=true;$('#explore-flat').disabled=true;$('#route-cancel').hidden=false;routeStatus('Finding your '+(mode==='walk'?'walking':'driving')+' route…');
+    updateDistance(point);controller=new AbortController();const currentController=controller,timeout=setTimeout(()=>currentController.abort(),30000);
     try{
       const result=await requestRoute(point,[selected.lng,selected.lat],mode,currentController.signal);if(token!==sequence)return;route=result;drawRoute();
       if(gps&&matchMedia('(max-width:720px)').matches)$('#visitor-map-frame').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'center'});
       $('#route-result').hidden=false;$('#route-time').textContent=R.time(result.duration);$('#route-distance').textContent=R.meters(result.distance);$('#route-travel-label').textContent=mode==='walk'?'Walking estimate':'Driving estimate';
+      updateDistance(point);
       $('#map-route-summary').hidden=false;$('#map-route-summary').textContent=(mode==='walk'?'Walking':'Driving')+' route · '+R.time(result.duration)+' · '+R.meters(result.distance);
       $('#route-steps').innerHTML=result.steps.map((s,i)=>'<li><span>'+(i+1)+'</span><div>'+escape(s.text)+'<small>'+R.meters(s.distance)+'</small></div></li>').join('');
       const gaps=result.startGap>60||result.endGap>60?' The mapped route starts or ends on the nearest reachable road, not exactly at the pin.':'';
@@ -94,7 +109,7 @@
     routeBusy=true;$('#route-gps').disabled=true;$('#route-pin').disabled=true;$('#explore-flat').disabled=true;routeStatus('Allow location access in your browser to find your route.');
     navigator.geolocation.getCurrentPosition(position=>{
       if(token!==sequence)return;
-      if(position.coords.accuracy>1000){routeBusy=false;$('#route-gps').disabled=false;$('#route-pin').disabled=false;$('#explore-flat').disabled=false;routeStatus('Your location is too approximate. Choose a starting point on the map for a more useful route.');return;}
+      if(!Number.isFinite(position.coords.accuracy)||position.coords.accuracy>1000){routeBusy=false;$('#route-gps').disabled=false;$('#route-pin').disabled=false;$('#explore-flat').disabled=false;routeStatus('Your location is too approximate. Choose a starting point on the map for a more useful route.');return;}
       calculate([position.coords.longitude,position.coords.latitude],true,token);
     },error=>{if(token!==sequence)return;routeBusy=false;$('#route-gps').disabled=false;$('#route-pin').disabled=false;$('#explore-flat').disabled=false;routeStatus(error.code===1?'Location permission was denied. Allow it in browser settings, or choose a starting point on the map.':'Your location could not be found. Try again outdoors, or choose a starting point on the map.');},{enableHighAccuracy:true,timeout:15000,maximumAge:10000});
   }
@@ -119,7 +134,7 @@
   section.addEventListener('click',event=>{const b=event.target.closest('[data-visitor-booth]');if(b)choose(b.dataset.visitorBooth);});
   $('#explore-back').addEventListener('click',()=>{cancelRoute();$('#explore-detail').hidden=true;$('#explore-list-panel').hidden=false;$('#explore-search').focus();});
   $('#route-gps').addEventListener('click',locate);$('#route-pin').addEventListener('click',startPick);$('#route-cancel').addEventListener('click',()=>cancelRoute('Navigation stopped. Your location is no longer being followed.'));
-  $('#route-mode').addEventListener('click',event=>{const button=event.target.closest('[data-route-mode]');if(!button||button.dataset.routeMode===mode)return;mode=button.dataset.routeMode;cancelRoute('Travel mode changed. Get directions again or choose a starting point.');section.querySelectorAll('[data-route-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.routeMode===mode)));});
+  $('#route-mode').addEventListener('click',event=>{const button=event.target.closest('[data-route-mode]');if(!button)return;modeChosen=true;if(button.dataset.routeMode===mode)return;mode=button.dataset.routeMode;cancelRoute('Travel mode changed. Get directions again or choose a starting point.');section.querySelectorAll('[data-route-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.routeMode===mode)));});
   $('#explore-flat').addEventListener('click',()=>setMapMode(ready&&mapMode==='terrain'?'street':'terrain'));$('#explore-recenter').addEventListener('click',fit);$('#route-fit').addEventListener('click',fit);
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&watch!==null){stopWatch();routeStatus('Location updates paused while away. Tap Get directions to resume when ready.');}});
   window.addEventListener('pagehide',()=>cancelRoute());

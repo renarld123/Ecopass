@@ -25,10 +25,10 @@ test('routing handles provider failure, no-route, rate limits, and cancellation'
 // Exercise browser orchestration with mocked DOM/GPS. Never access a person's location.
 function harness(routeResponse){
   const nodes=new Map(),events={},geo={},calls={routes:0,clears:0,draws:0,clearWatches:0};
-  const node=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',innerHTML:'',value:'',hidden:false,disabled:false,classList:{add(){},remove(){}},listeners:{},addEventListener(name,cb){this.listeners[name]=cb;},focus(){},scrollIntoView(){},setAttribute(){}});return nodes.get(id);};
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',innerHTML:'',value:'',hidden:false,disabled:false,classList:{add(){},remove(){}},listeners:{},addEventListener(name,cb){this.listeners[name]=cb;},focus(){},scrollIntoView(){},setAttribute(){},removeAttribute(){}});return nodes.get(id);};
   const section={querySelector:node,querySelectorAll:()=>[],classList:{add(){},remove(){}},addEventListener(){}};
   const scene={clearRoute(){calls.clears++;},update(){},show:async()=>{},fit(){},reset(){},focus(){},route(){calls.draws++;},userPosition(){}};
-  const context={document:{hidden:false,querySelector:()=>section,addEventListener:(name,cb)=>events[name]=cb},window:{EcoPassMapScene:scene,EcoPassRouting:{...R,createClient:()=>async()=>{calls.routes++;return routeResponse?routeResponse():R.parseRoute(fixture());}},addEventListener:(name,cb)=>events[name]=cb},navigator:{geolocation:{getCurrentPosition(success,error){geo.success=success;geo.error=error;},watchPosition(success,error){geo.watchSuccess=success;geo.watchError=error;return 1;},clearWatch(){calls.clearWatches++;}}},fetch:async()=>({ok:true,json:async()=>({booths:[{id:'test',name:'Test booth',address:'Public street',lat:end[1],lng:end[0],hours:'9–5'}]})}),AbortController,AbortSignal,setTimeout,clearTimeout,matchMedia:()=>({matches:false})};
+  const context={document:{hidden:false,querySelector:()=>section,addEventListener:(name,cb)=>events[name]=cb},window:{EcoPassMapScene:scene,EcoPassRouting:{...R,createClient:()=>async(point,destination,mode)=>{calls.routes++;calls.mode=mode;calls.origin=point;return routeResponse?routeResponse():R.parseRoute(fixture());}},addEventListener:(name,cb)=>events[name]=cb},navigator:{geolocation:{getCurrentPosition(success,error){geo.success=success;geo.error=error;},watchPosition(success,error){geo.watchSuccess=success;geo.watchError=error;return 1;},clearWatch(){calls.clearWatches++;}}},fetch:async()=>({ok:true,json:async()=>({booths:[{id:'test',name:'Test booth',address:'Public street',lat:end[1],lng:end[0],hours:'9–5'}]})}),AbortController,AbortSignal,setTimeout,clearTimeout,matchMedia:()=>({matches:false})};
   vm.runInNewContext(fs.readFileSync(require.resolve('./visitor-map'),'utf8'),context);
   return {node,geo,calls,events,context,flush:()=>new Promise(resolve=>setImmediate(resolve))};
 }
@@ -46,4 +46,23 @@ test('late route responses cannot restore navigation after cancellation',async()
 });
 test('inaccurate GPS is rejected with a manual starting-point alternative',async()=>{
   const h=harness();await h.flush();h.node('#route-gps').listeners.click();h.geo.success({coords:{longitude:start[0],latitude:start[1],accuracy:5000}});assert.equal(h.calls.routes,0);assert.match(h.node('#route-status').textContent,/too approximate/);assert.equal(h.node('#route-pin').disabled,false);
+});
+test('origins outside Sipalay request driving routes without clamping the origin',async()=>{
+  const h=harness();await h.flush();h.node('#route-gps').listeners.click();h.geo.success({coords:{longitude:122.9509,latitude:10.6765,accuracy:15}});await h.flush();
+  assert.equal(h.calls.routes,1);assert.equal(h.calls.mode,'drive');assert.equal(h.calls.origin[0],122.9509);assert.equal(h.calls.origin[1],10.6765);
+});
+test('remaining route distance decreases and off-route positions are identified',()=>{
+  const route=R.parseRoute(fixture()),mid=[(start[0]+end[0])/2,(start[1]+end[1])/2];
+  assert.equal(R.progress(start,route).remaining,550);assert.ok(R.progress(mid,route).remaining<300);assert.ok(R.progress(mid,route).remaining>250);assert.equal(R.progress(end,route).remaining,0);assert.equal(R.progress([123,11],route).offRoute,true);
+});
+test('an explicit walking choice is retained for a distant starting point',async()=>{
+  const h=harness();await h.flush();h.node('#route-mode').listeners.click({target:{closest:()=>({dataset:{routeMode:'walk'}})}});
+  h.node('#route-gps').listeners.click();h.geo.success({coords:{longitude:122.9509,latitude:10.6765,accuracy:15}});await h.flush();assert.equal(h.calls.mode,'walk');
+});
+test('live distance updates, near-booth status, and stop navigation clears the badge',async()=>{
+  const h=harness();await h.flush();h.node('#route-gps').listeners.click();h.geo.success({coords:{longitude:start[0],latitude:start[1],accuracy:10}});await h.flush();
+  assert.match(h.node('#map-distance-status').textContent,/550 m/);
+  h.geo.watchSuccess({coords:{longitude:end[0],latitude:end[1],accuracy:10}});assert.match(h.node('#map-distance-status').textContent,/near the booth/);
+  h.geo.watchSuccess({coords:{longitude:123,latitude:11,accuracy:10}});assert.match(h.node('#map-distance-status').textContent,/straight-line/);assert.match(h.node('#route-status').textContent,/away from/);assert.equal(h.node('#route-distance').textContent,'Off route');
+  h.node('#route-cancel').listeners.click();assert.equal(h.node('#map-distance-status').hidden,true);
 });

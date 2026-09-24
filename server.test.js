@@ -215,6 +215,14 @@ test('server protects writes and persists authenticated content updates', async 
   assert.equal((await fetch(`${base}/verify/${registrationResult.pass.id}`)).status, 200);
   assert.equal((await fetch(`${base}/api/admin/registrations/${registrationResult.pass.id}/confirm-payment`, { method: 'POST', headers: { Cookie: cookie } })).status, 409);
   const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
+  assert.equal((await fetch(base+'/api/admin/booth-image',{method:'POST',headers:{'Content-Type':'image/png'},body:tinyPng})).status,401);
+  assert.equal((await fetch(base+'/api/admin/booth-image',{method:'POST',headers:{Cookie:cookie,'Content-Type':'image/svg+xml'},body:'<svg></svg>'})).status,415);
+  assert.equal((await fetch(base+'/api/admin/booth-image',{method:'POST',headers:{Cookie:cookie,'Content-Type':'image/png'},body:'not a real image payload'})).status,415);
+  assert.equal((await fetch(base+'/api/admin/booth-image',{method:'POST',headers:{Cookie:cookie,Origin:'https://untrusted.example','Content-Type':'image/png'},body:tinyPng})).status,401);
+  const boothUpload=await fetch(base+'/api/admin/booth-image',{method:'POST',headers:{Cookie:cookie,'Content-Type':'image/png'},body:tinyPng});assert.equal(boothUpload.status,201);
+  const boothImage=await boothUpload.json();assert.match(boothImage.url,/^\/uploads\/booth-image-\d+-[a-f0-9]{8}\.png$/);
+  t.after(()=>fs.rm(path.join(__dirname,boothImage.url),{force:true}));
+  const boothImageResponse=await fetch(base+boothImage.url);assert.equal(boothImageResponse.status,200);assert.equal(boothImageResponse.headers.get('content-type'),'image/png');
   const backgroundUpload = await fetch(`${base}/api/admin/upload?slot=how.backgroundImage`, { method: 'POST', headers: { 'Content-Type': 'image/png', Cookie: cookie }, body: tinyPng });
   assert.equal(backgroundUpload.status, 201);
   const uploadedBackground = await backgroundUpload.json();

@@ -98,7 +98,7 @@
           </div>
           <div id="explore-detail" hidden>
             <button id="explore-back" class="explore-back" type="button"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#arrow-left"></use></svg>All checkpoints</button>
-            <div class="booth-identity"><img src="/booth-kiosk.svg" alt=""><div><span class="explore-kicker">ECOPASS CHECKPOINT</span><strong id="booth-number">01</strong><span class="booth-published"><i></i>Published location</span></div></div>
+            <div class="booth-identity"><img id="booth-background" class="booth-background" alt="" hidden><img src="/booth-kiosk.svg" alt=""><div><span class="explore-kicker">ECOPASS CHECKPOINT</span><strong id="booth-number">01</strong><span class="booth-published"><i></i>Published location</span></div></div>
             <div class="booth-copy"><h3 id="booth-name"></h3><p><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg><span id="booth-address"></span></p><p><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#clock"></use></svg><span id="booth-hours"></span></p></div>
             <div class="route-planner">
               <div class="route-heading"><strong>Let's get you there</strong><span>STAY ON THIS MAP</span></div>
@@ -108,7 +108,7 @@
               <button id="route-pin" class="route-secondary" type="button" disabled><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg>Choose a starting point on the map</button>
               <p id="route-status" role="status"></p><span id="route-live" class="route-live" hidden></span>
               <div id="route-result" hidden>
-                <div class="route-summary"><div><strong id="route-time"></strong><span id="route-travel-label"></span></div><div><strong id="route-distance"></strong><span>Mapped distance</span></div><button type="button" id="route-fit" aria-label="Show entire route" title="Show entire route"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#focus"></use></svg></button></div>
+                <div class="route-summary"><div><strong id="route-time"></strong><span id="route-travel-label"></span></div><div><strong id="route-distance"></strong><span>Remaining route estimate</span></div><button type="button" id="route-fit" aria-label="Show entire route" title="Show entire route"><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#focus"></use></svg></button></div>
                 <details class="route-instructions"><summary>Step-by-step directions</summary><ol id="route-steps"></ol></details>
                 <p class="route-caution">Estimates only, without live traffic. Follow local signs and conditions. Tap Get directions again if you leave the route. Please stop safely before using your phone.</p>
               </div>
@@ -122,6 +122,7 @@
           <div id="visitor-map-2d" class="visitor-map-canvas" aria-label="2D map of EcoPass scanning booths" hidden></div>
           <div class="map-caption"><span class="map-caption-dot"></span>SIPALAY CITY<span>Explore your way</span></div>
           <p id="map-route-summary" class="map-route-summary" hidden></p>
+          <p id="map-distance-status" class="map-distance-status" hidden aria-live="polite"></p>
           <div class="map-small-controls"><button id="explore-recenter" type="button" aria-label="Recenter map" title="Recenter map" disabled><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#focus"></use></svg></button><button id="explore-flat" type="button">2D view</button></div>
           <p id="route-pin-hint" class="route-pin-hint" hidden><svg class="ui-icon" aria-hidden="true"><use href="/landing-icons.svg#pin"></use></svg>Tap a road to set your starting point</p>
           <div class="explore-loading" id="explore-loading"><img src="/booth-kiosk.svg" alt=""><strong>A little closer to adventure…</strong><span>Preparing your view of Sipalay</span></div>

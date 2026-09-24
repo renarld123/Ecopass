@@ -13,7 +13,9 @@ function cleanBooth(input) {
   const text = (key, length) => String(input[key] || '').trim().slice(0,length);
   const lat = Number(input.lat), lng = Number(input.lng);
   if (!text('name',80) || !text('address',180) || input.lat == null || input.lng == null || String(input.lat).trim() === '' || String(input.lng).trim() === '' || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) throw fail('Enter a booth name, address, and valid map coordinates.');
-  return { name:text('name',80), address:text('address',180), lat, lng, hours:text('hours',100), contact:text('contact',60), notes:text('notes',300), active:input.active !== false };
+  const backgroundImage=String(input.backgroundImage||'');
+  if(backgroundImage&&!/^\/uploads\/booth-image-[0-9]+-[a-f0-9]{8}\.(png|jpg|webp|gif)$/.test(backgroundImage))throw fail('Upload a valid booth background image.');
+  return { name:text('name',80), address:text('address',180), lat, lng, hours:text('hours',100), contact:text('contact',60), notes:text('notes',300), backgroundImage, active:input.active !== false };
 }
 function passId(value) {
   let id = String(value || '').trim();
@@ -70,7 +72,7 @@ function createOperations({ useBlob, dataDir, readBlob, putBlob, ConflictError, 
   return {
     async publicBooths() {
       const state=await read();
-      return state.booths.filter(booth=>booth.active===true).map(({id,name,address,lat,lng,hours})=>({id,name,address,lat,lng,hours}));
+      return state.booths.filter(booth=>booth.active===true).map(({id,name,address,lat,lng,hours,backgroundImage})=>({id,name,address,lat,lng,hours,...(backgroundImage?{backgroundImage}:{})}));
     },
     async snapshot() { const [records,state]=await Promise.all([readRegistrations(),read()]); return {visitors:records.map(visitor),...state,today:dayInManila(),updatedAt:new Date().toISOString()}; },
     lookup,
