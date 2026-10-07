@@ -43,7 +43,9 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(html, /data-content="registration\.fullNameLabel"/);
   assert.match(html, /data-content="registration\.visitDateLabel"/);
   assert.match(html, /data-content="registration\.groupTitle"/);
-  assert.match(html, /data-content="registration\.paymentMethods\.4"/);
+  assert.match(html, /data-content="registration\.paymentMethods\.5"/);
+  assert.doesNotMatch(html, /value="Physical Payment"/);
+  assert.match(html, /class="payment-badge brand qrph"><img src="\/qr-ph-logo\.svg"/);
   assert.match(html, /Special:FilePath\/GCash_logo\.svg/);
   assert.match(html, /Special:FilePath\/Maya_logo\.svg/);
   assert.match(html, /Special:FilePath\/Mastercard_2019_logo\.svg/);
@@ -115,7 +117,7 @@ test('public landing page has no inline editing controls and only the required v
   assert.match(adminHtml, /data-field="support\.address"/);
   assert.match(adminHtml, /data-field="support\.mapEmbedUrl"/);
   assert.match(adminHtml, /data-field="registration\.title"/);
-  assert.match(adminHtml, /data-field="registration\.paymentMethods\.4"/);
+  assert.match(adminHtml, /data-field="registration\.paymentMethods\.5"/);
   assert.match(adminHtml, /id="registrationsList"/);
   assert.match(adminHtml, /data-slot="cta\.leavesImage"/);
   assert.match(adminHtml, /data-field="footer\.contactLink"/);
