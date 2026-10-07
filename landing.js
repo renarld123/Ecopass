@@ -144,7 +144,7 @@ window.addEventListener('message',async event=>{
 passModal?.querySelector('[data-registration-complete]')?.addEventListener('click',async event=>{
   const button=event.currentTarget;
   const status=passModal.querySelector('[data-pass-status="2"]');
-  const online=['GCash','Maya','Credit/Debit Card'].includes(passModal.querySelector('input[name="paymentMethod"]:checked')?.value);
+  const online=['GCash','Maya','Credit/Debit Card','QR Ph'].includes(passModal.querySelector('input[name="paymentMethod"]:checked')?.value);
   // Reserve a top-level window on the user gesture so browsers do not block the later checkout URL.
   const reservedPopup=online?openSecureCheckout():null;
   status.textContent='Saving your registration and preparing payment…';
@@ -185,7 +185,7 @@ passModalClose?.addEventListener('click',closePassModal);
 passModal?.addEventListener('click',event=>{if(event.target===passModal)closePassModal()});
 passModal?.addEventListener('close',()=>{syncModalScrollLock();passModalTrigger?.focus();passModalTrigger=null});
 passModal?.addEventListener('cancel',event=>{event.preventDefault();closePassModal()});
-async function configurePaymentChoices(){try{const response=await fetch('/api/payment-config');const config=await response.json();const online=passModal?.querySelectorAll('input[name="paymentMethod"]');online?.forEach(input=>{if(['GCash','Maya','Credit/Debit Card'].includes(input.value)){input.disabled=!config.paymongoAvailable;input.closest('label').classList.toggle('unavailable',!config.paymongoAvailable)}});if(!config.paymongoAvailable){const cash=passModal?.querySelector('input[value="Pay at Tourism Office (Cash)"]');if(cash)cash.checked=true}const note=passModal?.querySelector('.payment-notice');if(note)note.textContent=config.paymongoAvailable?`Online payment opens PayMongo's secure ${config.mode==='live'?'live':'test'} checkout. Card details are entered on PayMongo. Your pass is marked paid after payment is confirmed.`:'Online checkout is not connected yet. You may register and pay at the tourism office.'}catch{} }
+async function configurePaymentChoices(){try{const response=await fetch('/api/payment-config');const config=await response.json();const online=passModal?.querySelectorAll('input[name="paymentMethod"]');online?.forEach(input=>{if(['GCash','Maya','Credit/Debit Card','QR Ph'].includes(input.value)){input.disabled=!config.paymongoAvailable;input.closest('label').classList.toggle('unavailable',!config.paymongoAvailable)}});if(!config.paymongoAvailable){const cash=passModal?.querySelector('input[value="Pay at Tourism Office (Cash)"]');if(cash)cash.checked=true}const note=passModal?.querySelector('.payment-notice');if(note)note.textContent=config.paymongoAvailable?`Online payment opens PayMongo's secure ${config.mode==='live'?'live':'test'} checkout. For QR Ph, scan the payment QR with a participating bank or e-wallet. Your pass is marked paid after payment is confirmed.`:'Online checkout is not connected yet. You may register and pay at the tourism office.'}catch{} }
 async function showReturnedPayment(){
   const params=new URLSearchParams(location.search),passId=params.get('pass'),result=params.get('payment');
   if(!passId||!['return','cancel'].includes(result))return;

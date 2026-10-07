@@ -242,7 +242,7 @@ async function updateRegistration(id, apply) {
   }));
   return registrationWriteQueue;
 }
-function paymentType(method) { return { GCash: 'gcash', Maya: 'paymaya', 'Credit/Debit Card': 'card' }[method] || null; }
+function paymentType(method) { return { GCash: 'gcash', Maya: 'paymaya', 'Credit/Debit Card': 'card', 'QR Ph': 'qrph' }[method] || null; }
 async function paymongoRequest(route, payload) {
   const response = await fetch(`https://api.paymongo.com${route}`, {
     method: 'POST',
@@ -266,7 +266,7 @@ function verifyPaymongoSignature(raw, header, livemode) {
 function cleanRegistration(input) {
   const counts = Object.fromEntries(['adult', 'foreign', 'senior', 'child'].map(key => [key, Math.max(0, Math.min(50, Number.parseInt(input?.groups?.[key], 10) || 0))]));
   const stays = ['1D / 0N','2D / 1N','3D / 2N','4D / 3N','5D / 4N','6D / 5N','7D / 6N'];
-  const methods = ['GCash','Maya','Credit/Debit Card','Pay at Tourism Office (Cash)','Physical Payment'];
+  const methods = ['GCash','Maya','Credit/Debit Card','Pay at Tourism Office (Cash)','Physical Payment','QR Ph'];
   const date = String(input?.visitDate || ''); const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
   const today = new Date(); today.setUTCHours(0,0,0,0);
   const value = { fullName: cleanText(input?.fullName, 100), address: cleanText(input?.address, 180), contact: cleanText(input?.contact, 30), visitDate: date, stay: stays.includes(input?.stay) ? input.stay : '', groups: counts, paymentMethod: methods.includes(input?.paymentMethod) ? input.paymentMethod : '', idToken: cleanText(input?.idToken, 1000) };

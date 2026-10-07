@@ -9,6 +9,16 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { start, sanitizeContent } = require('./server');
 
+test('QR Ph remains available when loading older saved payment labels', async () => {
+  const oldMethods = ['GCash','Maya','Credit/Debit Card','Pay at Tourism Office (Cash)','Physical Payment'];
+  const content = sanitizeContent({registration:{paymentMethods:oldMethods}});
+  assert.deepEqual(content.registration.paymentMethods.slice(0,5),oldMethods);
+  assert.equal(content.registration.paymentMethods[5],'QR Ph');
+  const html = await fs.readFile(path.join(__dirname,'ecopass.html'),'utf8');
+  assert.match(html,/data-content="registration\.paymentMethods\.5">QR Ph/);
+  assert.match(html,/name="paymentMethod" value="QR Ph"/);
+});
+
 test('public landing page has no inline editing controls and only the required visitor ID upload', async () => {
   const html = await fs.readFile(path.join(__dirname, 'ecopass.html'), 'utf8');
   const adminHtml = await fs.readFile(path.join(__dirname, 'admin.html'), 'utf8');

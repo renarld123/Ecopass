@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 
-function dashboard(){
+function dashboard(extraVisitors=[]){
   const nodes=new Map(),events={};
   const node=id=>{if(!nodes.has(id))nodes.set(id,{value:id==='#payment-filter'?'all':'',textContent:'',innerHTML:'',hidden:false,dataset:{},attributes:{},listeners:{},classList:{toggle(){}},addEventListener(name,callback){this.listeners[name]=callback;},setAttribute(name,value){this.attributes[name]=value;},focus(){this.focused=true;}});return nodes.get(id);};
   const fixture={today:'2026-09-24',updatedAt:'2026-09-24T08:00:00Z',booths:[{id:'booth',name:'Test booth',active:true}],scans:[],visitors:[
@@ -12,7 +12,7 @@ function dashboard(){
     {id:'PENDING',fullName:'Online Visitor',visitDate:'2026-09-24',createdAt:'2026-09-23',amount:100,paymentStatus:'PENDING',paymentMethod:'GCash',groups:{adult:2}},
     {id:'PAID',fullName:'Paid Visitor',visitDate:'2026-09-24',createdAt:'2026-09-23',paidAt:'2026-09-24T08:00:00Z',amount:50,paymentStatus:'PAID',paymentMethod:'Physical Payment',paymentSource:'tourism-office',groups:{adult:1}},
     {id:'OLDER',fullName:'Earlier Visitor',visitDate:'2026-09-23',createdAt:'2026-09-22',amount:50,paymentStatus:'CHECKOUT_FAILED',groups:{adult:1}}
-  ]};
+  ].concat(extraVisitors)};
   let fail=false;
   const context={document:{querySelector:node,querySelectorAll:()=>[],addEventListener:(event,callback)=>events[event]=callback},window:{addEventListener(){}},location:{hash:'#overview'},history:{replaceState(){}},fetch:async url=>({ok:!fail,status:fail?503:200,json:async()=>url.endsWith('/session')?{authenticated:true}:fail?{error:'Connection unavailable'}:fixture}),Intl,Date,setTimeout:()=>0,clearTimeout(){},console};
   vm.runInNewContext(fs.readFileSync(require.resolve('./collections.js'),'utf8'),context);
@@ -34,6 +34,16 @@ test('dashboard shortcuts use real records and retain the selected visit-date ra
   assert.doesNotMatch(h.node('#visitor-rows').innerHTML,/Paid Visitor|Earlier Visitor/);
   assert.equal(h.node('#workspace-view').textContent,'Tourist records');
   assert.equal(h.node('#visitor-search').focused,true);
+});
+
+test('QR Ph collections count live payments but exclude test and pending payments',async()=>{
+  const h=dashboard([
+    {id:'QR-LIVE',visitDate:'2026-09-24',amount:100,paymentMethod:'QR Ph',paymentStatus:'PAID',paymentSource:'paymongo',checkoutMode:'live'},
+    {id:'QR-TEST',visitDate:'2026-09-24',amount:500,paymentMethod:'QR Ph',paymentStatus:'PAID',paymentSource:'paymongo',checkoutMode:'test'},
+    {id:'QR-PENDING',visitDate:'2026-09-24',amount:200,paymentMethod:'QR Ph',paymentStatus:'PENDING'}
+  ]);await h.flush();
+  assert.equal(h.node('#metric-collected').textContent,'₱150.00');
+  assert.match(h.node('#payment-breakdown').innerHTML,/QR Ph<\/span><strong>₱100\.00/);
 });
 
 test('dashboard refresh reports connection errors instead of a false synced state',async()=>{

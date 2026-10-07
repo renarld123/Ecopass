@@ -45,11 +45,12 @@ test('checkout requires a matching signed payment before issuing a paid pass', a
   });
   const registration = { fullName: 'Local Test Visitor', address: 'Sipalay City test fixture', contact: '09000000000',
     visitDate: '2099-12-15', stay: '1D / 0N', groups: { adult: 2, foreign: 0, senior: 0, child: 0 } };
-  for (const [method, type] of [['GCash', 'gcash'], ['Maya', 'paymaya'], ['Credit/Debit Card', 'card']]) {
+  for (const [method, type] of [['QR Ph', 'qrph'], ['GCash', 'gcash'], ['Maya', 'paymaya'], ['Credit/Debit Card', 'card']]) {
     const response = await post('/api/registrations', { ...registration, paymentMethod: method });
     assert.equal(response.status, 201);
     const result = await response.json();
     assert.equal(result.pass.paymentStatus, 'PENDING');
+    assert.equal(result.pass.paymentMethod, method);
     assert.equal(result.pass.passIssued, false);
     assert.equal(result.qrDataUrl, undefined);
     assert.deepEqual(sessions.at(-1).attributes.payment_method_types, [type]);
@@ -88,6 +89,7 @@ test('checkout requires a matching signed payment before issuing a paid pass', a
   assert.equal((await post('/api/paymongo/webhook', event, signed(event))).status, 200);
   const paid = await readPass();
   assert.equal(paid.paymentStatus, 'PAID');
+  assert.equal(paid.paymentMethod, 'QR Ph');
   assert.equal(paid.status, 'ACTIVE');
   assert.equal(paid.passIssued, true);
   assert.match(paid.qrDataUrl, /^data:image\/png;base64,/);
@@ -95,9 +97,13 @@ test('checkout requires a matching signed payment before issuing a paid pass', a
   assert.equal((await post('/api/paymongo/webhook', event, signed(event))).status, 200);
   assert.equal((await readPass()).id, reference);
   nextCheckoutError = true;
-  assert.equal((await post('/api/registrations', { ...registration, paymentMethod: 'GCash' })).status, 502);
+  assert.equal((await post('/api/registrations', { ...registration, paymentMethod: 'QR Ph' })).status, 502);
   const stored = JSON.parse(await fs.readFile(path.join(directory, 'data/registrations.json'), 'utf8'));
-  assert.equal(stored.length, 4);
+  assert.equal(stored.length, 5);
   assert.equal(stored.at(-1).paymentStatus, 'CHECKOUT_FAILED');
+  assert.equal(stored.at(-1).paymentMethod, 'QR Ph');
+  const failedPass = await (await fetch(`${base}/api/passes/${stored.at(-1).id}`)).json();
+  assert.equal(failedPass.passIssued, false);
+  assert.equal(failedPass.qrDataUrl, null);
   assert.equal(stored.filter(record => record.paymentStatus === 'PAID').length, 1);
 });

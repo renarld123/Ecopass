@@ -118,7 +118,7 @@ module.exports = Object.freeze({
     successDescription: 'A verified QR pass will be issued after payment is confirmed.',
     downloadButton: 'Download Pass',
     saveButton: 'Save Pass',
-    paymentMethods: ['GCash', 'Maya', 'Credit/Debit Card', 'Pay at Tourism Office (Cash)', 'Physical Payment']
+    paymentMethods: ['GCash', 'Maya', 'Credit/Debit Card', 'Pay at Tourism Office (Cash)', 'Physical Payment', 'QR Ph']
   },
   cta: {
     title: 'Ready for your next meaningful journey?',
