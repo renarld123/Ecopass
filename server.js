@@ -316,7 +316,7 @@ async function handler(req, res) {
         return res.end(req.method === 'HEAD' ? undefined : html);
       }
     }
-    if (url.pathname === '/api/payment-config' && req.method === 'GET') return json(res, 200, { paymongoAvailable: Boolean(PAYMONGO_SECRET_KEY && PAYMONGO_WEBHOOK_SECRET), mode: PAYMONGO_MODE });
+    if (url.pathname === '/api/payment-config' && req.method === 'GET') return json(res, 200, { paymongoAvailable: Boolean(PAYMONGO_SECRET_KEY && PAYMONGO_WEBHOOK_SECRET), mode: PAYMONGO_MODE, qrphAvailable: Boolean(PAYMONGO_SECRET_KEY && PAYMONGO_WEBHOOK_SECRET) && PAYMONGO_MODE === 'live' });
     if (url.pathname === '/api/paymongo/webhook' && req.method === 'POST') {
       const raw = await body(req, 1024 * 1024);
       let event;
@@ -360,6 +360,9 @@ async function handler(req, res) {
       const input = cleanRegistration(await jsonBody(req)); recordRegistrationAttempt(req);
       const methodType = paymentType(input.paymentMethod);
       if (methodType && (!PAYMONGO_SECRET_KEY || !PAYMONGO_WEBHOOK_SECRET)) return json(res, 503, { error: 'Online checkout is not available yet. Choose payment at the tourism office or try again later.' });
+      // Never expose a test QR Ph code to a real wallet. PayMongo test QR codes
+      // must only be used with its simulator, not scanned and paid by visitors.
+      if (methodType === 'qrph' && PAYMONGO_MODE !== 'live') return json(res, 503, { error: 'QR Ph payments are not live yet. Do not scan an earlier test QR code with a real wallet. Please pay at the tourism office until live QR Ph is enabled.' });
       const record = { ...input, id: `ECP-${input.visitDate.replaceAll('-', '')}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`, paymentStatus: methodType ? 'PENDING' : 'PAY_AT_OFFICE', status: 'PENDING_PAYMENT', createdAt: new Date().toISOString() };
       delete record.idToken;
       stage = 'registration-storage';

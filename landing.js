@@ -185,7 +185,35 @@ passModalClose?.addEventListener('click',closePassModal);
 passModal?.addEventListener('click',event=>{if(event.target===passModal)closePassModal()});
 passModal?.addEventListener('close',()=>{syncModalScrollLock();passModalTrigger?.focus();passModalTrigger=null});
 passModal?.addEventListener('cancel',event=>{event.preventDefault();closePassModal()});
-async function configurePaymentChoices(){try{const response=await fetch('/api/payment-config');const config=await response.json();const online=passModal?.querySelectorAll('input[name="paymentMethod"]');online?.forEach(input=>{if(['GCash','Maya','Credit/Debit Card','QR Ph'].includes(input.value)){input.disabled=!config.paymongoAvailable;input.closest('label').classList.toggle('unavailable',!config.paymongoAvailable)}});if(!config.paymongoAvailable){const cash=passModal?.querySelector('input[value="Pay at Tourism Office (Cash)"]');if(cash)cash.checked=true}const note=passModal?.querySelector('.payment-notice');if(note)note.textContent=config.paymongoAvailable?`Online payment opens PayMongo's secure ${config.mode==='live'?'live':'test'} checkout. For QR Ph, scan the payment QR with a participating bank or e-wallet. Your pass is marked paid after payment is confirmed.`:'Online checkout is not connected yet. You may register and pay at the tourism office.'}catch{} }
+async function configurePaymentChoices(){
+  const inputs=passModal?.querySelectorAll('input[name="paymentMethod"]');
+  const note=passModal?.querySelector('.payment-notice');
+  const apply=(available,mode,qrphAvailable)=>{
+    inputs?.forEach(input=>{
+      if(!['GCash','Maya','Credit/Debit Card','QR Ph'].includes(input.value))return;
+      const enabled=available&&(input.value!=='QR Ph'||(mode==='live'&&qrphAvailable));
+      input.disabled=!enabled;
+      input.closest('label').classList.toggle('unavailable',!enabled);
+      if(input.value==='QR Ph'){
+        const hint=input.closest('label').querySelector('small');
+        if(hint)hint.textContent=enabled?'Scan using a participating bank or e-wallet':'Unavailable until live payments are enabled';
+      }
+    });
+    if(passModal?.querySelector('input[name="paymentMethod"]:checked')?.disabled){
+      const cash=passModal.querySelector('input[value="Pay at Tourism Office (Cash)"]');
+      if(cash)cash.checked=true;
+    }
+    if(note)note.textContent=!available?'Online checkout is unavailable. You may register and pay at the tourism office.':mode!=='live'?'TEST MODE — online checkout is for simulation only. Do not scan a test QR Ph code or pay with a real wallet. QR Ph is unavailable until live payments are enabled. To pay in person, choose Pay at Tourism Office (Cash).':"Online payment opens PayMongo’s secure live checkout. For QR Ph, scan the payment QR with a participating bank or e-wallet. Your pass is marked paid only after payment is confirmed.";
+  };
+  // Fail closed until the server confirms the payment mode, including on reload.
+  apply(false,'test',false);
+  try{
+    const response=await fetch('/api/payment-config');
+    if(!response.ok)throw new Error('Payment configuration unavailable');
+    const config=await response.json();
+    apply(config.paymongoAvailable===true,config.mode,config.qrphAvailable===true);
+  }catch{apply(false,'test',false)}
+}
 async function showReturnedPayment(){
   const params=new URLSearchParams(location.search),passId=params.get('pass'),result=params.get('payment');
   if(!passId||!['return','cancel'].includes(result))return;

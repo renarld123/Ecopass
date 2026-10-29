@@ -11,7 +11,7 @@ test('checkout requires a matching signed payment before issuing a paid pass', a
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ecopass-payment-test-'));
   process.env.STORAGE_ROOT = directory;
   process.env.BLOB_READ_WRITE_TOKEN = '';
-  process.env.PAYMONGO_SECRET_KEY = 'sk_test_local_fixture';
+  process.env.PAYMONGO_SECRET_KEY = 'sk_live_local_fixture';
   process.env.PAYMONGO_WEBHOOK_SECRET = 'local-webhook-fixture';
   process.env.ADMIN_PASSWORD = 'local-payment-test-admin';
   process.env.SESSION_SECRET = 'local-payment-test-session-secret-long';
@@ -21,7 +21,7 @@ test('checkout requires a matching signed payment before issuing a paid pass', a
   global.fetch = async (url, options) => {
     if (String(url).startsWith('https://api.paymongo.com/')) {
       assert.equal(String(url), 'https://api.paymongo.com/v2/checkout_sessions');
-      assert.equal(options.headers.Authorization, `Basic ${Buffer.from('sk_test_local_fixture:').toString('base64')}`);
+      assert.equal(options.headers.Authorization, `Basic ${Buffer.from('sk_live_local_fixture:').toString('base64')}`);
       if (nextCheckoutError) {
         nextCheckoutError = false;
         return Response.json({ errors: [{ detail: 'Test checkout rejected' }] }, { status: 422 });
@@ -40,6 +40,9 @@ test('checkout requires a matching signed payment before issuing a paid pass', a
     await fs.rm(directory, { recursive: true, force: true });
   });
   const base = `http://127.0.0.1:${server.address().port}`;
+  const config = await (await fetch(base + '/api/payment-config')).json();
+  assert.equal(config.mode, 'live');
+  assert.equal(config.qrphAvailable, true);
   const post = (route, value, headers = {}) => fetch(base + route, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(value)
   });
@@ -59,13 +62,13 @@ test('checkout requires a matching signed payment before issuing a paid pass', a
   }
   const session = sessions[0];
   const reference = session.attributes.reference_number;
-  const event = { data: { id: 'evt_test_paid', attributes: { type: 'checkout_session.payment.paid', livemode: false,
+  const event = { data: { id: 'evt_test_paid', attributes: { type: 'checkout_session.payment.paid', livemode: true,
     data: { id: session.id, attributes: { reference_number: reference,
       payments: [{ attributes: { status: 'paid', currency: 'PHP', amount: 10000 } }] } } } } };
   const signed = (value, secret = process.env.PAYMONGO_WEBHOOK_SECRET) => {
     const timestamp = Math.floor(Date.now() / 1000);
     const digest = crypto.createHmac('sha256', secret).update(`${timestamp}.${JSON.stringify(value)}`).digest('hex');
-    return { 'paymongo-signature': `t=${timestamp},te=${digest},li=` };
+    return { 'paymongo-signature': `t=${timestamp},te=,li=${digest}` };
   };
   const readPass = async () => (await fetch(`${base}/api/passes/${reference}`)).json();
   const login = await post('/api/admin/login', { password: 'local-payment-test-admin' });
